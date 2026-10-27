@@ -1,0 +1,13 @@
+.git/
+.venv/
+.venv-old/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.env
+.env.*
+!.env.example
+.aws/
+.DS_Store
