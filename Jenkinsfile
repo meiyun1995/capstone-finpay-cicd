@@ -18,18 +18,18 @@ pipeline {
         }
     }
 
-    stage('Build') {
-        steps {
-            sh 'docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:$BUILD_NUMBER .'
+        stage('Build') {
+            steps {
+                sh 'docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:$BUILD_NUMBER .'
+            }
         }
-    }
 
-    stage('Test') {
-        steps {
-            sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
+        stage('Test') {
+            steps {
+                sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
+            }
         }
-    }
-    
+
     triggers {
         pollSCM('H/2 * * * *')
     }
