@@ -56,6 +56,21 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Container Build') {
+            steps {
+                sh '''
+                    docker build \
+                    --platform linux/amd64 \
+                    -t cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    .
+
+                    docker image inspect \
+                    cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    --format '{{.Os}}/{{.Architecture}}'
+                '''
+            }
+        }    
     }
 
     triggers {
