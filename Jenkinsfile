@@ -16,4 +16,8 @@ pipeline {
             }
         }
     }
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
 }
