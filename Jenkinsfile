@@ -29,8 +29,26 @@ pipeline {
                 sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
             }
         }
+        
+        stage('Package') {
+            steps {
+                sh '''
+                    mkdir -p dist
+                    git archive \
+                    --format=tar.gz \
+                    --output=dist/finsecure-pay-${BUILD_NUMBER}.tar.gz \
+                    HEAD \
+                    app.py transaction.py requirements.txt Dockerfile k8s README.md
+                '''
+
+                archiveArtifacts(
+                    artifacts: "dist/finsecure-pay-${env.BUILD_NUMBER}.tar.gz",
+                    fingerprint: true
+                )
+            }
+        }
     }
-    
+
     triggers {
         pollSCM('H/2 * * * *')
     }
