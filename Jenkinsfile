@@ -16,7 +16,7 @@ pipeline {
                 sh 'git log -1 --oneline'
             }
         }
-    }
+    
 
         stage('Build') {
             steps {
@@ -29,7 +29,8 @@ pipeline {
                 sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
             }
         }
-
+    }
+    
     triggers {
         pollSCM('H/2 * * * *')
     }
