@@ -1,3 +1,4 @@
+// Run pipeline stages on the dedicated build agent.
 pipeline {
     agent {
         label 'finsecure-agent'
