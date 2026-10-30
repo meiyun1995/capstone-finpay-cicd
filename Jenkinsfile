@@ -47,6 +47,15 @@ pipeline {
                 )
             }
         }
+
+        stage('Security Checks') {
+            steps {
+                sh '''
+                    docker run --rm finsecure-pay-test:$BUILD_NUMBER \
+                    python -m bandit app.py transaction.py
+                '''
+            }
+        }
     }
 
     triggers {

@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir bandit==1.9.4
 
 COPY app.py transaction.py ./
 COPY tests/ ./tests/
