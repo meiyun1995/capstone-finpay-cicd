@@ -1,0 +1,40 @@
+FROM jenkins/inbound-agent:jdk21@sha256:5069347cd3e72e5924e54c04fceb67209b41c8d0a3ab1c2b3f740e5fb2fab92a
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+       git \
+       python3 \
+       python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg \
+       -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian trixie stable" \
+       > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       docker-ce-cli \
+       docker-buildx-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+    ARG KUBECTL_VERSION=v1.36.2
+
+RUN ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL \
+       "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
+       -o /tmp/kubectl \
+    && curl -fsSL \
+       "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl.sha256" \
+       -o /tmp/kubectl.sha256 \
+    && cd /tmp \
+    && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check \
+    && install -m 0755 kubectl /usr/local/bin/kubectl \
+    && rm kubectl kubectl.sha256
+    
+USER jenkins
