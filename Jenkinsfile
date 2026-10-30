@@ -56,7 +56,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Container Build') {
             steps {
                 sh '''
@@ -71,6 +71,31 @@ pipeline {
                 '''
             }
         }    
+        
+        stage('Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set +x
+                        export DOCKER_CONFIG="$(mktemp -d)"
+                        trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+
+                        printf '%s' "$DOCKERHUB_TOKEN" |
+                        docker login \
+                            --username "$DOCKERHUB_USERNAME" \
+                            --password-stdin
+
+                        docker push cmyaa/finsecure-pay:build-${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
     }
 
     triggers {
