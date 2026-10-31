@@ -71,7 +71,7 @@ pipeline {
                 '''
             }
         }    
-        
+
         stage('Push') {
             steps {
                 withCredentials([
@@ -96,7 +96,43 @@ pipeline {
                 }
             }
         }
+
+    stage('Deploy') {
+        steps {
+            withCredentials([
+                file(
+                    credentialsId: 'aks-kubeconfig',
+                    variable: 'KUBECONFIG'
+                )
+            ]) {
+                sh '''
+                    set -eu
+
+                    kubectl --namespace default apply \
+                    -f k8s/configmap.yaml \
+                    -f k8s/service.yaml
+
+                    DEPLOY_MANIFEST="$(mktemp)"
+                    trap 'rm -f "$DEPLOY_MANIFEST"' EXIT
+
+                    kubectl set image \
+                    --local \
+                    -f k8s/deployment.yaml \
+                    finsecure-pay=cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    -o yaml > "$DEPLOY_MANIFEST"
+
+                    kubectl --namespace default apply -f "$DEPLOY_MANIFEST"
+
+                    kubectl --namespace default rollout status \
+                    deployment/finsecure-pay --timeout=180s
+
+                    kubectl --namespace default get deployment finsecure-pay -o wide
+                    kubectl --namespace default get pods -l app=finsecure-pay -o wide
+                '''
+            }
+        }
     }
+}
 
     triggers {
         pollSCM('H/2 * * * *')
