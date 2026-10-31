@@ -29,7 +29,21 @@ pipeline {
                 sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
             }
         }
-        
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+
+                    withSonarQubeEnv('finsecure-sonarqube') {
+                        withEnv(["SCANNER_HOME=${scannerHome}"]) {
+                            sh '"$SCANNER_HOME/bin/sonar-scanner"'
+                        }
+                    }
+                }
+            }
+        }       
+         
         stage('Package') {
             steps {
                 sh '''
