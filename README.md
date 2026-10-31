@@ -7,7 +7,8 @@ API with minimal manual intervention.
 The application validates transaction payloads and exposes a health endpoint.
 It does not transfer money, verify account existence, or store transactions.
 The project includes automated tests, a versioned Docker image, and a managed
-Azure Kubernetes Service deployment. CI/CD automation is the next stage.
+Azure Kubernetes Service deployment, and a Jenkins pipeline that tests, scans,
+packages, publishes, and deploys versioned application images.
 
 ## Prerequisites and setup
 
@@ -41,6 +42,8 @@ tests/test_app.py  Automated API tests
 requirements.txt   Pinned application and test dependencies
 README.md          Setup, API usage, and testing instructions
 k8s/               ConfigMap, Deployment, and Service manifests
+Jenkinsfile        Declarative CI/CD pipeline
+jenkins/           Agent/test Dockerfiles and deployment access configuration
 ```
 
 ## Validation rules
@@ -318,9 +321,246 @@ Retain the single-node limitation in the design explanation. After completing
 the cloud tasks, remove the dedicated assignment resources and verify that
 associated billable resources have also been removed.
 
+## Task 4: Jenkins CI/CD automation
+
+### Jenkins architecture
+
+Jenkins runs locally in Docker Desktop and deploys the application to the managed
+AKS cluster from Task 3. The controller has zero build executors; pipeline steps
+run on a dedicated agent.
+
+| Component | Configuration |
+| --- | --- |
+| Controller | Container `jenkins`, image `jenkins/jenkins:2.580.2-jdk21` |
+| Dashboard | `http://localhost:8081/`, bound to the Mac's loopback interface |
+| Agent | Container and Jenkins node `finsecure-agent`, label `finsecure-agent`, one executor |
+| Agent image | `finsecure-jenkins-agent:0.3`, built from [Dockerfile.agent](jenkins/Dockerfile.agent) |
+| Agent connection | WebSocket to `http://jenkins:8080` on `jenkins-network` |
+| Build engine | Container `jenkins-docker`, image `docker:29-dind` |
+| Docker connection | TLS to `tcp://docker:2376`; engine port is not published to the host |
+| Deployment target | `aks-finsecure-pay`, namespace `default` |
+
+The agent runs as UID/GID 1000 (`jenkins`) and includes Git, Python, Docker CLI,
+Buildx, and checksum-verified kubectl `v1.36.2`. Its Debian Python is 3.13; pipeline
+tests run in the separate Python 3.12 test image to match the application runtime.
+The Docker-in-Docker engine runs privileged for this trusted local assignment
+environment. The agent's non-root user does not remove the power granted by
+access to that engine.
+
+Persistent volumes retain controller data (`jenkins_home`), agent workspace
+(`finsecure-agent-work`), engine data (`jenkins-docker-data`), and client TLS
+certificates (`jenkins-docker-certs`). The agent secret is mounted read-only from
+outside the Git repository.
+
+To rebuild the agent from the repository root:
+
+```bash
+docker build -f jenkins/Dockerfile.agent -t finsecure-jenkins-agent:0.3 jenkins/
+```
+
+### Job and automatic trigger
+
+The Pipeline job `finsecure-pay-pipeline` uses **Pipeline script from SCM**:
+
+- Repository: `https://github.com/meiyun1995/capstone-finpay-cicd.git` (public).
+- Branch specifier: `*/feature/jenkins-pipeline`.
+- Script path: `Jenkinsfile`.
+- SCM polling: `H/2 * * * *`, approximately every two minutes.
+
+The first run loads the trigger configuration. Later changes pushed to the
+configured branch trigger builds through polling. The controller, agent, build
+engine, Docker Desktop, and Mac must be running for this local setup to operate.
+SCM polling avoids requiring an internet-accessible webhook endpoint.
+`disableConcurrentBuilds()` prevents overlapping executions of this job.
+
+### Pipeline stages and artifacts
+
+The [Jenkinsfile](Jenkinsfile) defines these sequential stages:
+
+| Stage | Behavior |
+| --- | --- |
+| Checkout | Checks out the configured Git revision and prints its commit |
+| Build | Builds `finsecure-pay-test:$BUILD_NUMBER` using [Dockerfile.test](jenkins/Dockerfile.test) |
+| Test | Runs pytest in the Python 3.12 test container; the normal suite has 39 cases |
+| Package | Archives selected committed application and deployment files as `finsecure-pay-N.tar.gz` and fingerprints the Jenkins artifact |
+| Security Checks | Runs Bandit 1.9.4 against `app.py` and `transaction.py` |
+| Container Build | Builds the root Dockerfile for `linux/amd64`, tagged `cmyaa/finsecure-pay:build-N` |
+| Push | Authenticates with a Docker Hub token and pushes the build tag |
+| Deploy | Applies ConfigMap and Service, renders the build image into a temporary Deployment manifest, applies it, and waits up to 180 seconds for rollout |
+
+`N` is the Jenkins job's build number, not a Kubernetes revision number. Tags
+identify successive executions of this job; Docker Hub does not inherently make
+them immutable. Preserve the job's build history and avoid overwriting release
+tags. Unchanged application files can produce identical image content under
+different build tags.
+
+The source archive is a downloadable record of the build's committed source.
+Kubernetes runs the Docker image, not the archive. The Docker build uses the
+checked-out files directly.
+
+Bandit checks common Python source-code security issues. This stage does not
+perform dependency CVE scanning or container image vulnerability scanning.
+Nonzero test or scan exit codes fail their stage and prevent later stages from
+running; errors are not suppressed with `|| true` or `--exit-zero`.
+
+The Deployment file in Git retains `v1.0.0` as its initial image. During CI/CD,
+`kubectl set image --local` substitutes the current build tag into a temporary
+manifest before applying it, without changing the tracked YAML. Applying the
+original `k8s/deployment.yaml` manually would restore its original image tag.
+
+### Credentials and deployment permissions
+
+| Jenkins credential ID | Kind | Purpose |
+| --- | --- | --- |
+| `dockerhub-credentials` | Username with password | Docker Hub username and Read/Write personal access token |
+| `aks-kubeconfig` | Secret file | Dedicated kubeconfig for `jenkins-deployer` |
+
+The Push stage uses `withCredentials`, disables shell tracing, passes the token
+through `docker login --password-stdin`, and deletes its temporary Docker login
+configuration on shell exit. The Deploy stage binds its secret file to
+`KUBECONFIG`. Neither credential belongs in Git, Docker build arguments, or
+submission screenshots.
+
+[deploy-access.yaml](jenkins/deploy-access.yaml) defines a ServiceAccount, Role,
+and RoleBinding in `default`. Jenkins can create or update Deployments,
+ConfigMaps, and Services, and read ReplicaSets, pods, and events. These
+permissions cover those resource types throughout `default`; they are not
+restricted to the FinSecure Pay resource names. The identity has no direct
+permission to read Secrets or manage RBAC. Apply this bootstrap configuration
+manually using the administrator's cluster access:
+
+```bash
+kubectl --context aks-finsecure-pay apply -f jenkins/deploy-access.yaml
+```
+
+### Renew the temporary AKS credential
+
+The deployment token requests an eight-hour lifetime, subject to the server's
+issued expiry. Renewal is manual in this assignment setup. An expired token can
+cause `the server has asked for the client to provide credentials`, including
+during OpenAPI validation. Disabling manifest validation does not fix expired
+authentication.
+
+On the Mac, refresh personal access with `az login` if necessary, then:
+
+```bash
+az aks get-credentials --resource-group rg-finsecure-pay --name aks-finsecure-pay
+```
+
+Regenerate the dedicated credential outside the repository. This script writes
+the token to a restricted file without printing it:
+
+```bash
+python3 - <<'PY'
+import json
+import os
+import subprocess
+from pathlib import Path
+
+def kubectl(*args):
+    return subprocess.check_output(
+        ["kubectl", "--context", "aks-finsecure-pay", *args], text=True
+    ).strip()
+
+cluster = json.loads(kubectl(
+    "config", "view", "--raw", "--minify",
+    "-o", "jsonpath={.clusters[0].cluster}",
+))
+token = kubectl("create", "token", "jenkins-deployer",
+                "--namespace", "default", "--duration=8h")
+config = {
+    "apiVersion": "v1", "kind": "Config",
+    "clusters": [{"name": "aks-finsecure-pay", "cluster": cluster}],
+    "users": [{"name": "jenkins-deployer", "user": {"token": token}}],
+    "contexts": [{"name": "jenkins-deploy", "context": {
+        "cluster": "aks-finsecure-pay", "user": "jenkins-deployer",
+        "namespace": "default",
+    }}],
+    "current-context": "jenkins-deploy",
+}
+directory = Path.home() / ".jenkins-agent-secrets"
+directory.mkdir(mode=0o700, exist_ok=True)
+path = directory / "aks-jenkins-config.json"
+fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+os.fchmod(fd, 0o600)
+with os.fdopen(fd, "w") as output:
+    json.dump(config, output, indent=2)
+print(f"Saved credential to: {path}")
+PY
+
+kubectl --kubeconfig "$HOME/.jenkins-agent-secrets/aks-jenkins-config.json" \
+  get deployment finsecure-pay
+```
+
+In Jenkins, update the existing `aks-kubeconfig` Secret file credential by
+uploading the regenerated file, preserving its credential ID. Updating the file
+on the Mac alone does not update Jenkins' stored copy. Rerun the failed build
+after updating the credential.
+
+### Controlled test failure
+
+The failure demonstration introduced `tests/test_pipeline_gate.py` with an
+intentional failing assertion on the branch polled by Jenkins. The Test stage
+failed and subsequent stages, including Deploy, were skipped. The deployed image
+was checked before and after the failed run to confirm it was unchanged.
+
+The demonstration was repeated after the Deploy stage had been added. Reverting
+the deliberate-failure commit removed the test while retaining its history and
+allowed subsequent pipeline runs to pass. Preserve the failed build's console
+output and stage view as evidence; the intentionally failing test should not
+remain in the normal test suite.
+
+### Automated rollout and rollback results
+
+The captured successful Jenkins deployment rolled out
+`cmyaa/finsecure-pay:build-17`, finishing with two ready, up-to-date, available
+replicas. The previous ReplicaSets for `build-15` and `v1.0.0` remained with zero
+desired replicas. A subsequent manual rollback to `build-15` completed
+successfully.
+
+To identify the target revision before a rollback:
+
+```bash
+kubectl --context aks-finsecure-pay -n default rollout history deployment/finsecure-pay
+kubectl --context aks-finsecure-pay -n default get replicasets \
+  -l app=finsecure-pay \
+  -o 'custom-columns=REVISION:.metadata.annotations.deployment\.kubernetes\.io/revision,IMAGE:.spec.template.spec.containers[0].image'
+```
+
+With no Jenkins deployment running, replace `REVISION_NUMBER` with the revision
+whose image is the verified rollback target:
+
+```bash
+kubectl --context aks-finsecure-pay -n default rollout undo deployment/finsecure-pay \
+  --to-revision=REVISION_NUMBER
+kubectl --context aks-finsecure-pay -n default rollout status deployment/finsecure-pay \
+  --timeout=180s
+kubectl --context aks-finsecure-pay -n default get deployment finsecure-pay -o wide
+kubectl --context aks-finsecure-pay -n default get pods -l app=finsecure-pay -o wide
+kubectl --context aks-finsecure-pay -n default get service finsecure-pay-service
+```
+
+Verify `/health` using the Service's current external IP. Rollback restores a
+previous pod template, not Git or ConfigMap contents. A later successful pipeline
+run will deploy its new build tag again. Capture rollback evidence before
+pushing further changes.
+
+### Task 4 submission evidence
+
+- Committed Jenkinsfile and supporting agent/test Dockerfiles.
+- Automatically triggered build showing an SCM change as its cause.
+- Successful stage view from Checkout through Deploy and downloadable archive.
+- Failed-test logs and skipped downstream stages, including Deploy.
+- Docker Hub version tag and successful AKS rollout to `build-17`.
+- Rollback command, completion output, restored `build-15` image, ready pods,
+  and external health-check result.
+
 ## Development workflow
 
 Work on a feature branch, run the tests, and review changes before committing.
-Push the feature branch and open a pull request into `main`. The next assignment
-stage is to configure CI to run the test suite automatically and then add the
-deployment pipeline.
+Push the feature branch and open a pull request into `main`. The configured
+Jenkins job currently polls `feature/jenkins-pipeline`; pushes to that branch,
+including documentation changes, trigger the full pipeline and deployment.
+Update the job's branch configuration deliberately when changing the release
+workflow. Keep credentials outside Git and retain the evidence from each
+assignment demonstration.
