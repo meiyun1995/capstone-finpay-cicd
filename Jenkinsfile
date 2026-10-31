@@ -37,13 +37,20 @@ pipeline {
 
                     withSonarQubeEnv('finsecure-sonarqube') {
                         withEnv(["SCANNER_HOME=${scannerHome}"]) {
-                            sh '"$SCANNER_HOME/bin/sonar-scanner"'
+                            withCredentials([
+                                string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')
+                            ]) {
+                                sh '''
+                                    set +x
+                                    "$SCANNER_HOME/bin/sonar-scanner"
+                                '''
+                            }
                         }
                     }
                 }
             }
         }       
-         
+
         stage('Package') {
             steps {
                 sh '''
