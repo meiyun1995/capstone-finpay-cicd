@@ -87,7 +87,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Package') {
             steps {
                 sh '''
@@ -129,6 +129,45 @@ pipeline {
                 '''
             }
         }    
+
+        stage('Trivy Container Scan') {
+        steps {
+            sh '''
+                set -eu
+
+                mkdir -p reports
+                IMAGE_ARCHIVE="$(mktemp)"
+                trap 'rm -f "$IMAGE_ARCHIVE"' EXIT
+
+                docker save \
+                    cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    --output "$IMAGE_ARCHIVE"
+
+                trivy image \
+                    --input "$IMAGE_ARCHIVE" \
+                    --scanners vuln \
+                    --timeout 10m \
+                    --exit-code 0 \
+                    --format json \
+                    --output "reports/trivy-${BUILD_NUMBER}.json"
+
+                trivy convert \
+                    --format table \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 1 \
+                    "reports/trivy-${BUILD_NUMBER}.json"
+            '''
+        }
+
+        post {
+            always {
+                archiveArtifacts(
+                    artifacts: "reports/trivy-${env.BUILD_NUMBER}.json",
+                    allowEmptyArchive: true
+                )
+            }
+        }
+    }
 
         stage('Push') {
             steps {
