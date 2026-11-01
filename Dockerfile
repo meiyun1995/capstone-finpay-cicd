@@ -1,4 +1,4 @@
-FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
+FROM python:3.12-alpine@sha256:e6dae589c1c05976188fd3bd019afd091445fc533ed2ea29001beddc7368a9c8
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -10,9 +10,9 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY app.py transaction.py ./
 
-RUN groupadd --gid 10001 appuser \
-    && useradd --uid 10001 --gid appuser --no-create-home \
-       --shell /usr/sbin/nologin appuser
+RUN addgroup -S -g 10001 appuser \
+    && adduser -S -D -H -u 10001 -G appuser \
+       -s /sbin/nologin appuser
 
 USER appuser
 
