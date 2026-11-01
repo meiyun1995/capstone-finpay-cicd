@@ -7,7 +7,7 @@ API with minimal manual intervention.
 The application validates transaction payloads and exposes a health endpoint.
 It does not transfer money, verify account existence, or store transactions.
 The project includes automated tests, a versioned Docker image, and a managed
-Azure Kubernetes Service deployment, and a Jenkins pipeline that tests, scans,
+Azure Kubernetes Service deployment and a Jenkins pipeline that tests, scans,
 packages, publishes, and deploys versioned application images.
 
 ## Prerequisites and setup
@@ -42,6 +42,7 @@ tests/test_app.py  Automated API tests
 requirements.txt   Pinned application and test dependencies
 README.md          Setup, API usage, and testing instructions
 k8s/               ConfigMap, Deployment, and Service manifests
+sonar-project.properties  SonarQube analysis scope and gate polling
 Jenkinsfile        Declarative CI/CD pipeline
 jenkins/           Agent/test Dockerfiles and deployment access configuration
 ```
@@ -334,7 +335,7 @@ run on a dedicated agent.
 | Controller | Container `jenkins`, image `jenkins/jenkins:2.580.2-jdk21` |
 | Dashboard | `http://localhost:8081/`, bound to the Mac's loopback interface |
 | Agent | Container and Jenkins node `finsecure-agent`, label `finsecure-agent`, one executor |
-| Agent image | `finsecure-jenkins-agent:0.3`, built from [Dockerfile.agent](jenkins/Dockerfile.agent) |
+| Agent image | `finsecure-jenkins-agent:0.5`, built from [Dockerfile.agent](jenkins/Dockerfile.agent) |
 | Agent connection | WebSocket to `http://jenkins:8080` on `jenkins-network` |
 | Build engine | Container `jenkins-docker`, image `docker:29-dind` |
 | Docker connection | TLS to `tcp://docker:2376`; engine port is not published to the host |
@@ -355,7 +356,7 @@ outside the Git repository.
 To rebuild the agent from the repository root:
 
 ```bash
-docker build -f jenkins/Dockerfile.agent -t finsecure-jenkins-agent:0.3 jenkins/
+docker build --platform linux/amd64 -f jenkins/Dockerfile.agent -t finsecure-jenkins-agent:0.5 .
 ```
 
 ### Job and automatic trigger
@@ -363,7 +364,7 @@ docker build -f jenkins/Dockerfile.agent -t finsecure-jenkins-agent:0.3 jenkins/
 The Pipeline job `finsecure-pay-pipeline` uses **Pipeline script from SCM**:
 
 - Repository: `https://github.com/meiyun1995/capstone-finpay-cicd.git` (public).
-- Branch specifier: `*/feature/jenkins-pipeline`.
+- Branch specifier: `*/feature/devsecops` (originally `*/feature/jenkins-pipeline` for Task 4).
 - Script path: `Jenkinsfile`.
 - SCM polling: `H/2 * * * *`, approximately every two minutes.
 
@@ -382,9 +383,12 @@ The [Jenkinsfile](Jenkinsfile) defines these sequential stages:
 | Checkout | Checks out the configured Git revision and prints its commit |
 | Build | Builds `finsecure-pay-test:$BUILD_NUMBER` using [Dockerfile.test](jenkins/Dockerfile.test) |
 | Test | Runs pytest in the Python 3.12 test container; the normal suite has 39 cases |
+| SonarQube Analysis | Scans application code and tests, then waits for the configured quality gate |
+| Snyk Dependency Scan | Resolves requirements in a temporary environment and blocks High/Critical dependency findings |
 | Package | Archives selected committed application and deployment files as `finsecure-pay-N.tar.gz` and fingerprints the Jenkins artifact |
 | Security Checks | Runs Bandit 1.9.4 against `app.py` and `transaction.py` |
 | Container Build | Builds the root Dockerfile for `linux/amd64`, tagged `cmyaa/finsecure-pay:build-N` |
+| Trivy Container Scan | Scans the built image archive and blocks High/Critical vulnerabilities before publication |
 | Push | Authenticates with a Docker Hub token and pushes the build tag |
 | Deploy | Applies ConfigMap and Service, renders the build image into a temporary Deployment manifest, applies it, and waits up to 180 seconds for rollout |
 
@@ -399,7 +403,8 @@ Kubernetes runs the Docker image, not the archive. The Docker build uses the
 checked-out files directly.
 
 Bandit checks common Python source-code security issues. This stage does not
-perform dependency CVE scanning or container image vulnerability scanning.
+perform dependency CVE scanning or container image vulnerability scanning; the
+separate Snyk and Trivy stages added in Task 5 provide those checks.
 Nonzero test or scan exit codes fail their stage and prevent later stages from
 running; errors are not suppressed with `|| true` or `--exit-zero`.
 
@@ -555,11 +560,199 @@ pushing further changes.
 - Rollback command, completion output, restored `build-15` image, ready pods,
   and external health-check result.
 
+## Task 5: DevSecOps and security integration
+
+### Tools and execution order
+
+Three security layers run in the existing Jenkins pipeline. Bandit remains as an
+additional Python check. The current pipeline order is:
+
+```text
+Checkout → Build → Test → SonarQube Analysis → Snyk Dependency Scan
+→ Package → Security Checks (Bandit) → Container Build
+→ Trivy Container Scan → Push → Deploy
+```
+
+| Component | Version/configuration |
+| --- | --- |
+| SonarQube Community Build | `26.10.0.133078`, local container `sonarqube` |
+| SonarQube image | `sonarqube@sha256:f95aaa9016dd4e92c7d70691167a6d96dbb5d8acffd61eba1cb4335d364a7840` |
+| Jenkins SonarScanner tool | Name `SonarScanner`, CLI `8.3.0.16463` |
+| Jenkins server configuration | `finsecure-sonarqube`, URL `http://sonarqube:9000` |
+| Snyk CLI | `1.1308.3` |
+| Trivy | `0.76.1` |
+| Current agent image | `finsecure-jenkins-agent:0.5`, Linux AMD64 |
+
+Snyk and Trivy are installed with pinned versions and SHA-256 verification in
+[Dockerfile.agent](jenkins/Dockerfile.agent). Rebuilding an agent image does not
+update a running container; recreate the agent with its existing network,
+workspace volume, TLS certificate volume, and read-only agent-secret mount.
+
+SonarQube shares `jenkins-network` with Jenkins. Its browser address on the Mac is
+`http://localhost:9000`; `http://sonarqube:9000` is the internal Docker address.
+The host port is bound to `127.0.0.1`. Named volumes `sonarqube-data`,
+`sonarqube-extensions`, and `sonarqube-logs` preserve its local data. The embedded
+database is used for this assignment setup, not as a production database design.
+
+### Source analysis and quality gate
+
+[sonar-project.properties](sonar-project.properties) sets project key
+`finsecure-pay`, sources `app.py,transaction.py`, tests `tests`, and target Python
+version `3.12`. Jenkins supplies authentication through the Secret text credential
+`sonarqube-token`, explicitly bound to `SONAR_TOKEN`. No token is stored in the
+properties file.
+
+The project uses the custom **FinSecure Security Gate**. Its overall-code
+condition fails when **Security Rating is worse than A**, covering existing code
+as well as changes. The inherited new-code conditions are:
+
+- Issues greater than zero.
+- Security Hotspots Reviewed below 100%.
+- Coverage below 80%.
+- Duplicated Lines above 3%.
+
+The pipeline polls for the result using `sonar.qualitygate.wait=true` and
+`sonar.qualitygate.timeout=300`. A failed gate or unsuccessful scan blocks later
+stages. Webhook creation was rejected by SonarQube's private-address validation,
+so the final implementation uses polling and does not require a webhook secret
+or a separate `waitForQualityGate` stage.
+
+The pipeline does not currently generate/import a coverage XML report. Passing
+pytest tests therefore does not establish the coverage percentage in SonarQube.
+The passing gate should not be described as proof of 80% overall test coverage.
+SonarQube server settings and project-gate association are configured in its UI;
+the repository properties file alone does not recreate those settings.
+
+### CSRF finding review
+
+SonarQube initially reported `python:S4502` at `app = Flask(__name__)` with High
+security impact. The Security Rating gate failed, and Jenkins stopped with
+`QUALITY GATE STATUS: FAILED` and exit code 3.
+
+The finding was reviewed against the application's actual behavior: `/validate`
+only checks the submitted JSON and returns a result. The API uses no login
+sessions or authentication cookies, does not change stored data, and does not
+execute payments. The issue was resolved as a false positive with this rationale
+recorded in SonarQube. Subsequent analysis passed.
+
+This is a documented finding review, **not a vulnerability patch**. Reassess CSRF
+protection if browser authentication or state-changing operations are added.
+The container base-image migration below supplies the actual remediation
+before-and-after evidence.
+
+### Dependency scanning and reports
+
+Snyk authenticates using Jenkins Secret text credential `snyk-token`, bound to
+`SNYK_TOKEN`. The stage creates a fresh temporary virtual environment, installs
+`requirements.txt`, and runs `snyk test --severity-threshold=high`. This threshold
+blocks High and Critical dependency vulnerabilities. Scanner errors also fail
+the stage; failures are not ignored.
+
+The observed baseline scanned **13 dependencies**, reporting zero findings at
+that threshold. This does not assert the absence of lower-severity issues.
+The Snyk environment uses the agent's Python 3.13; application tests and runtime
+use Python 3.12. This is a resolution-environment limitation, particularly if
+Python-version-dependent requirements are introduced. Trivy additionally scans
+the packages installed in the actual deployment image.
+
+The stage archives `reports/snyk-N.json` in its `post { always { ... } }` block,
+including when vulnerability findings cause failure. A scanner/setup error may
+prevent report creation; allowing an empty archive does not change the failed
+stage into a successful one. The temporary environment is removed on shell exit.
+
+### Container scanning and release gate
+
+After building `cmyaa/finsecure-pay:build-N`, Jenkins exports that exact image
+using `docker save`. Trivy scans the temporary archive with `--scanners vuln`,
+covering OS packages and supported application packages. This archive approach
+works with the separate Docker-in-Docker engine without assuming shared bind
+mount paths between the engine and agent.
+
+The initial scan writes a full JSON vulnerability report with `--exit-code 0`.
+The following `trivy convert --severity HIGH,CRITICAL --exit-code 1` command prints
+the relevant findings and enforces the gate. Thus the report-generation option
+does not bypass the release gate. Scan errors stop the shell as well.
+`--ignore-unfixed` is not used: High/Critical findings without available fixes
+also block publication and deployment.
+
+`reports/trivy-N.json` is archived even when the gate fails, if a report was
+produced. The temporary image archive is deleted on shell exit. These scans
+check vulnerabilities; this Trivy stage does not enable its secret or
+misconfiguration scanners. Scan results depend on the vulnerability database
+available at execution time, so a later scan of the same image may differ.
+
+### Base-image remediation and verified deployment
+
+The initial Debian-based application image failed with **44 High package/CVE
+findings representing 8 distinct CVEs**. There were no High/Critical Python
+package findings. The affected OS package families included util-linux, acl,
+ncurses, systemd, and perl; the reports listed no fixed versions for these
+findings.
+
+Refreshing the Python slim base to digest
+`sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159`
+did not resolve them: the next scan reported the same findings and affected
+package versions. The High/Critical threshold remained unchanged.
+
+The application and test images were then migrated to the official Python 3.12
+Alpine base, pinned in both Dockerfiles:
+
+```dockerfile
+FROM python:3.12-alpine@sha256:e6dae589c1c05976188fd3bd019afd091445fc533ed2ea29001beddc7368a9c8
+```
+
+The candidate base scan detected Alpine `3.24.3` and reported no High/Critical
+findings. Alpine uses a different OS package set and musl libc, so compatibility
+was checked through the test pipeline and a local application smoke test. The
+root Dockerfile uses Alpine's `addgroup`/`adduser` commands and retains the
+non-root application UID/GID `10001`. The local `/health` check returned HTTP 200.
+
+The subsequent full application-image scan passed and Jenkins deployed
+**`cmyaa/finsecure-pay:build-27`**. Verification on **1 November 2026** showed:
+
+| Check | Observed result |
+| --- | --- |
+| AKS Deployment | `finsecure-pay`: 2/2 ready, 2 up-to-date, 2 available |
+| Deployed image | `cmyaa/finsecure-pay:build-27` |
+| Service | `finsecure-pay-service`, LoadBalancer, external IP `57.158.99.15` |
+| External request | `GET /health`: HTTP `200 OK` from Gunicorn, `{"status":"ok"}` |
+
+This remediation **replaced the affected base-image package set**; it did not
+patch the Debian packages in place. The passing scan establishes no reported
+High/Critical findings at scan time, not an absence of all possible security
+risks. The failure demonstration used actual detected vulnerabilities in the
+previous base image, rather than a deliberately introduced application flaw.
+
+### Secret management and submission evidence
+
+In addition to the Docker Hub and AKS credentials described in Task 4, Jenkins
+stores `sonarqube-token` and `snyk-token` as Secret text credentials. The pipeline
+binds them only around the relevant scans and disables shell tracing. Credentials
+are not embedded in Dockerfiles, Git, application manifests, or scanner reports
+intentionally. Screenshots show credential IDs/types only, never secret values.
+
+Retain the following evidence with the submission:
+
+- Committed Jenkinsfile, scanner properties, and checksum-pinned agent Dockerfile.
+- SonarQube gate configuration, passing result, and documented CSRF review.
+- Snyk scan summary and archived `reports/snyk-N.json`.
+- Failed Debian-image Trivy report and console output, with the Jenkins build
+  number and skipped Push/Deploy stages visible.
+- The base-image migration commit and passing test/Trivy results.
+- Successful build 27 stage view, Docker Hub tag, AKS Deployment output, and
+  external health response.
+- Jenkins credentials-list screenshot showing IDs and types without values.
+
+Use the actual failed build numbers from Jenkins when labelling the saved
+screenshots and reports; they are not recorded here. Preserve both failed and
+passing reports before deleting build history. The JSON reports are Jenkins
+artifacts, while SonarQube results and review history remain on its server.
+
 ## Development workflow
 
 Work on a feature branch, run the tests, and review changes before committing.
 Push the feature branch and open a pull request into `main`. The configured
-Jenkins job currently polls `feature/jenkins-pipeline`; pushes to that branch,
+Jenkins job currently polls `feature/devsecops`; pushes to that branch,
 including documentation changes, trigger the full pipeline and deployment.
 Update the job's branch configuration deliberately when changing the release
 workflow. Keep credentials outside Git and retain the evidence from each
