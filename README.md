@@ -8,7 +8,8 @@ The application validates transaction payloads and exposes a health endpoint.
 It does not transfer money, verify account existence, or store transactions.
 The project includes automated tests, a versioned Docker image, and a managed
 Azure Kubernetes Service deployment and a Jenkins pipeline that tests, scans,
-packages, publishes, and deploys versioned application images.
+packages, publishes, and deploys versioned application images. Prometheus and
+Grafana provide live operational metrics and Discord alert notifications.
 
 ## Prerequisites and setup
 
@@ -42,6 +43,7 @@ tests/test_app.py  Automated API tests
 requirements.txt   Pinned application and test dependencies
 README.md          Setup, API usage, and testing instructions
 k8s/               ConfigMap, Deployment, and Service manifests
+monitoring/        Helm values, Grafana dashboard, and alert-rule exports
 sonar-project.properties  SonarQube analysis scope and gate polling
 Jenkinsfile        Declarative CI/CD pipeline
 jenkins/           Agent/test Dockerfiles and deployment access configuration
@@ -748,6 +750,304 @@ screenshots and reports; they are not recorded here. Preserve both failed and
 passing reports before deleting build history. The JSON reports are Jenkins
 artifacts, while SonarQube results and review history remain on its server.
 
+## Task 6: Monitoring, alerting, and logging
+
+### Architecture and deployment
+
+Monitoring runs on the existing AKS cluster in a separate `monitoring` namespace.
+Prometheus collects container CPU/memory metrics from kubelet/cAdvisor and
+Deployment availability metrics from kube-state-metrics. Node exporter supplies
+host metrics. Grafana queries Prometheus, evaluates the application alert, and
+sends notifications to a private Discord channel.
+
+```text
+AKS kubelet/cAdvisor + kube-state-metrics + node exporter
+                       ↓
+                   Prometheus
+                       ↓
+                    Grafana → Discord (Firing / Resolved)
+
+Gunicorn stdout/stderr → Kubernetes container logs → kubectl logs
+```
+
+| Setting | Configuration |
+| --- | --- |
+| Cluster / namespace | `aks-finsecure-pay` / `monitoring` |
+| Helm CLI used | `v4.3.1` |
+| Helm release | `finsecure-monitoring` |
+| Chart | `prometheus-community/kube-prometheus-stack`, pinned to `92.17.0` |
+| Grafana version in dashboard export | `13.3.0` |
+| Grafana access | Internal ClusterIP Service; local port-forward to port 3000 |
+| Grafana storage | 5Gi Azure disk, `managed-csi`, ReadWriteOnce |
+| Prometheus storage | 10Gi Azure disk, `managed-csi`, ReadWriteOnce |
+| Metrics retention | Two days, with a `6GB` retention-size setting |
+| Alert evaluator | Grafana-managed alerting; standalone Alertmanager disabled |
+| Notification destination | Discord contact point `finsecure-discord` |
+
+The two PVCs were verified as `Bound`. Resource requests and limits are defined
+in [values.yaml](monitoring/values.yaml). Before installation, the node showed
+3% CPU and 12% memory usage, with 29% CPU and 10% memory requested. These were
+point-in-time capacity checks, not a guarantee of future headroom. Monitoring
+shares the application's single node and is not highly available. Persistent
+disks incur charges; they preserve data across pod replacements but are not
+backups. Prometheus retention settings do not constitute a hard total-disk quota.
+
+Control-plane scraping for controller-manager, scheduler, and etcd is disabled
+because those endpoints are not exposed for this managed AKS setup. Application
+HTTP counters and latency histograms are not instrumented in the current API;
+the dashboard uses actual container resource usage and Deployment availability.
+
+From the repository root, install or update the monitoring release:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+helm upgrade --install finsecure-monitoring \
+  prometheus-community/kube-prometheus-stack \
+  --version 92.17.0 \
+  --kube-context aks-finsecure-pay \
+  --namespace monitoring \
+  --create-namespace \
+  --values monitoring/values.yaml \
+  --wait --timeout 10m
+
+kubectl --context aks-finsecure-pay -n monitoring get pods
+kubectl --context aks-finsecure-pay -n monitoring get pvc
+```
+
+Helm manages the monitoring stack separately from Jenkins application releases.
+The values file contains no Grafana password or Discord webhook URL. Do not
+commit rendered chart output: it can include generated Kubernetes Secrets.
+
+### Access Grafana and restore configuration
+
+Keep this command running while accessing the dashboard:
+
+```bash
+kubectl --context aks-finsecure-pay -n monitoring \
+  port-forward service/finsecure-monitoring-grafana 3000:80
+```
+
+Open `http://localhost:3000` and sign in as `admin`. On macOS, copy the generated
+password directly to the clipboard without displaying it in terminal output:
+
+```bash
+kubectl --context aks-finsecure-pay -n monitoring \
+  get secret finsecure-monitoring-grafana \
+  -o jsonpath='{.data.admin-password}' | base64 --decode | pbcopy
+```
+
+Keep the password out of screenshots and clear the clipboard after use. Closing
+the port-forward stops browser access, but does not stop server-side collection,
+alert evaluation, or outbound Discord notifications.
+
+| Repository file | Purpose |
+| --- | --- |
+| [values.yaml](monitoring/values.yaml) | Helm resource, persistence, and component settings |
+| [finsecure-pay-dashboard.json](monitoring/finsecure-pay-dashboard.json) | Exported FinSecure Pay Operations dashboard, Grafana dashboard API v2 format |
+| [finsecure-monitoring.yaml](monitoring/finsecure-monitoring.yaml) | Grafana provisioning-format export of the replica alert group |
+
+The custom dashboard, alert, and contact point were created through the Grafana
+UI and are retained on its persistent volume. **The Helm command above does not
+automatically import these exports.** On a fresh installation, import the
+dashboard using a compatible Grafana dashboard import flow and map its data
+source to Prometheus. The alert references data source UID `prometheus`; verify
+that UID before restoring it.
+
+The alert YAML is a Grafana provisioning document, not a Kubernetes manifest;
+do not run `kubectl apply` on it. Restore it through Grafana file provisioning
+by mounting it into Grafana's `provisioning/alerting` directory and reloading or
+restarting Grafana, or recreate the rule in the UI using the settings below.
+Avoid provisioning a duplicate of an already existing rule. File-provisioned
+rules have different UI editing restrictions from UI-created rules.
+
+Recreate the `finsecure-discord` contact point separately with a privately stored
+Discord webhook URL. In Grafana, select the Discord integration, test delivery,
+and leave resolved notifications enabled. The exported rule contains only the
+contact-point name, not the webhook credential. Treat the webhook URL as a secret
+and never export decrypted contact-point secrets into Git. Recreating Grafana
+from exports requires supplying this secret again.
+
+### Live dashboard
+
+**FinSecure Pay Operations** displays the last 15 minutes and refreshes every
+10 seconds. Refreshing the dashboard does not change Prometheus's scrape
+interval. Queries select application containers in namespace `default` and
+continue matching replacement pods without hardcoded pod names.
+
+| Panel | Visualization | Interpretation |
+| --- | --- | --- |
+| CPU usage per pod | Time series, `suffix:mCPU`, two decimals | Five-minute average CPU consumption; 1000 millicores equals one CPU core |
+| Memory working set per pod | Time series, `suffix:MiB`, two decimals | Container working-set bytes converted to MiB |
+| Available replicas | Instant-query Stat, zero decimals | Red below two, green at two or more |
+
+CPU query:
+
+```promql
+1000 * sum by (pod) (
+  rate(container_cpu_usage_seconds_total{
+    namespace="default",
+    pod=~"finsecure-pay-.*",
+    container="finsecure-pay",
+    image!=""
+  }[5m])
+)
+```
+
+Memory query:
+
+```promql
+max by (pod) (
+  container_memory_working_set_bytes{
+    namespace="default",
+    pod=~"finsecure-pay-.*",
+    container="finsecure-pay",
+    image!=""
+  }
+) / 1024 / 1024
+```
+
+Replica query:
+
+```promql
+kube_deployment_status_replicas_available{
+  namespace="default",
+  deployment="finsecure-pay"
+}
+```
+
+The CPU and memory values are not percentages. Custom suffixes only label the
+already converted values. Dashboard color thresholds do not themselves send
+notifications; the separate alert rule provides that behavior.
+
+### Replica alert and notification evidence
+
+| Alert setting | Value |
+| --- | --- |
+| Name | `FinSecure Pay — Insufficient replicas` |
+| Folder / evaluation group | `FinSecure Pay` / `finsecure-monitoring` |
+| Query | Maximum of the available-replicas metric for `default/finsecure-pay`, instant query |
+| Condition | Below `2` |
+| Evaluation interval | 30 seconds |
+| Pending period | One minute |
+| No data / evaluation errors | `NoData` / `Error`, not treated as healthy |
+| Contact point | `finsecure-discord` |
+
+The fixed threshold represents this application's operational requirement of at
+least two available replicas. It detects a drop below that baseline even when
+someone intentionally reduces the desired count. Revisit it if the application's
+replica policy changes. The pending period avoids firing for very brief changes.
+
+The demonstration first confirmed two available replicas and a Normal alert.
+With Jenkins deployments idle, one replica was deliberately removed by scaling:
+
+```bash
+kubectl --context aks-finsecure-pay -n default \
+  scale deployment finsecure-pay --replicas=1
+
+kubectl --context aks-finsecure-pay -n default \
+  get deployment finsecure-pay -w
+```
+
+After metric collection and evaluation, the dashboard displayed a red `1`, the
+rule transitioned through Pending to Firing, and an actual Discord firing
+notification was received. A contact-point test notification was also checked
+before the demonstration, but is separate from the real alert evidence.
+
+After capturing the firing state, two replicas were restored:
+
+```bash
+kubectl --context aks-finsecure-pay -n default \
+  scale deployment finsecure-pay --replicas=2
+
+kubectl --context aks-finsecure-pay -n default \
+  rollout status deployment/finsecure-pay --timeout=180s
+
+kubectl --context aks-finsecure-pay -n default \
+  get deployment finsecure-pay
+```
+
+The alert returned to Normal and a Discord Resolved notification was received.
+Notification timing includes scraping, rule evaluation, the pending period, and
+notification grouping/delivery. This simulated reduced redundancy, not a CPU
+load test or a guarantee of uninterrupted application traffic. Always restore
+two replicas after repeating the experiment.
+
+### Logging strategy and troubleshooting
+
+Gunicorn writes access logs to stdout (`--access-logfile -`) and its default
+error log to stderr. Kubernetes captures these container streams. Access logs
+show request paths and response statuses; timestamps and pod prefixes help
+identify when a request occurred and which replica handled it. Avoid logging
+credentials, full transaction payloads, or sensitive financial data.
+
+Follow logs from both application replicas:
+
+```bash
+kubectl --context aks-finsecure-pay -n default logs \
+  -l app=finsecure-pay -c finsecure-pay \
+  --prefix=true --timestamps=true --tail=20 --follow
+```
+
+In another terminal, use the Service's current external IP to generate requests:
+
+```bash
+curl -i --max-time 10 http://57.158.99.15/health
+
+curl -i --max-time 10 http://57.158.99.15/validate \
+  -H 'Content-Type: application/json' \
+  -d '{"transaction_id":"demo-invalid","account_id":"demo-account","amount":0,"currency":"SGD"}'
+```
+
+The expected responses are 200 and 400 respectively. The rejected request's
+**400 access-log entry was observed**. This is expected business-input validation,
+not an outage, and it does not trigger the insufficient-replicas alert.
+Press Ctrl+C to stop following logs without affecting the application.
+
+For an unhealthy replica, inspect its status and events, then its logs:
+
+```bash
+kubectl --context aks-finsecure-pay -n default get pods -l app=finsecure-pay -o wide
+kubectl --context aks-finsecure-pay -n default describe pod POD_NAME
+kubectl --context aks-finsecure-pay -n default logs POD_NAME \
+  -c finsecure-pay --timestamps=true --since=15m
+```
+
+If a container restarted within the same pod and previous logs remain available:
+
+```bash
+kubectl --context aks-finsecure-pay -n default logs POD_NAME \
+  -c finsecure-pay --previous --timestamps=true
+```
+
+Replace `POD_NAME` with a current pod name. Previous-container logs are not an
+archive of deleted pods. This setup uses Kubernetes-managed local log rotation
+and has no centralized logging backend or configured durable log-retention
+policy. Logs may become unavailable after rotation, pod deletion, or node loss.
+Prometheus stores metrics, not these logs; logs are not displayed in Grafana.
+A production extension could use Alloy/Loki or a cloud logging service for
+central retention and search.
+
+### Task 6 submission evidence
+
+The completed demonstration provides the following evidence for Slide 6:
+
+- Live dashboard showing CPU, memory, and available replicas, with refresh/time
+  range visible.
+- Alert rule configuration showing the below-two threshold and one-minute
+  pending period, plus the actual Firing state.
+- Actual Discord Firing and Resolved notifications, with no webhook URL visible.
+- Terminal log inspection showing the expected 400 response for invalid input.
+- Restored Deployment state with two replicas, and committed monitoring values,
+  dashboard export, and alert-rule export.
+
+Keep screenshots with the submission; the repository exports preserve settings,
+not historic graph samples, notification messages, or screenshots. Short metrics
+retention means the demonstration's graph data will expire. Persistent disks and
+the shared AKS node still incur costs; review retained PVCs/disks when cleaning up
+the monitoring installation.
+
 ## Development workflow
 
 Work on a feature branch, run the tests, and review changes before committing.
@@ -755,5 +1055,7 @@ Push the feature branch and open a pull request into `main`. The configured
 Jenkins job currently polls `feature/devsecops`; pushes to that branch,
 including documentation changes, trigger the full pipeline and deployment.
 Update the job's branch configuration deliberately when changing the release
-workflow. Keep credentials outside Git and retain the evidence from each
+workflow. Task 6 configuration is developed on `feature/monitoring-alerting`
+and installed separately with Helm; Jenkins remains pointed at
+`feature/devsecops`. Keep credentials outside Git and retain the evidence from each
 assignment demonstration.
