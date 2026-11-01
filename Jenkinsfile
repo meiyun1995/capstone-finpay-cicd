@@ -51,6 +51,43 @@ pipeline {
             }
         }       
 
+
+        stage('Snyk Dependency Scan') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        set -eu
+
+                        mkdir -p reports
+                        SCA_ENV="$(mktemp -d)"
+                        trap 'rm -rf "$SCA_ENV"' EXIT
+
+                        python3 -m venv "$SCA_ENV"
+                        "$SCA_ENV/bin/python" -m pip install \
+                            --no-cache-dir -r requirements.txt
+
+                        snyk test \
+                            --file=requirements.txt \
+                            --command="$SCA_ENV/bin/python" \
+                            --severity-threshold=high \
+                            --json-file-output="reports/snyk-${BUILD_NUMBER}.json"
+                    '''
+                }
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: "reports/snyk-${env.BUILD_NUMBER}.json",
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+        
         stage('Package') {
             steps {
                 sh '''

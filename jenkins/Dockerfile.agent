@@ -36,5 +36,15 @@ RUN ARCH="$(dpkg --print-architecture)" \
     && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check \
     && install -m 0755 kubectl /usr/local/bin/kubectl \
     && rm kubectl kubectl.sha256
-    
+
+ARG SNYK_VERSION=1.1308.3
+ARG SNYK_SHA256=5f323f45885341ea1473639859271925912ece82a2f77bc146bb4468f9838840
+
+RUN curl -fsSL \
+       "https://downloads.snyk.io/cli/v${SNYK_VERSION}/snyk-linux" \
+       -o /tmp/snyk-linux \
+    && echo "${SNYK_SHA256}  /tmp/snyk-linux" | sha256sum --check \
+    && install -m 0755 /tmp/snyk-linux /usr/local/bin/snyk \
+    && rm /tmp/snyk-linux
+
 USER jenkins
