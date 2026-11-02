@@ -38,8 +38,11 @@
         <mxCell id="pods" value="Deployment in default&#10;Two Flask and Gunicorn pods" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edf4fb;strokeColor=#446b90;fontSize=17;fontFamily=Arial;fontColor=#152536;" vertex="1" parent="aks">
           <mxGeometry as="geometry" x="280" y="50" width="210" height="60" />
         </mxCell>
-        <mxCell id="logs" value="Container logs&#10;kubectl logs inspection" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edf4fb;strokeColor=#446b90;fontSize=17;fontFamily=Arial;fontColor=#152536;" vertex="1" parent="aks">
+        <mxCell id="logs" value="Azure Monitor Agent&#10;Container logs" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edf4fb;strokeColor=#446b90;fontSize=17;fontFamily=Arial;fontColor=#152536;" vertex="1" parent="aks">
           <mxGeometry as="geometry" x="550" y="50" width="210" height="60" />
+        </mxCell>
+        <mxCell id="workspace" value="Azure Log Analytics&#10;ContainerLogV2&#10;30-day retention" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edf4fb;strokeColor=#446b90;fontSize=17;fontFamily=Arial;fontColor=#152536;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="1090" y="440" width="240" height="80" />
         </mxCell>
         <mxCell id="telemetry" value="Kubelet and exporters&#10;CPU memory and replica metrics" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#edf4fb;strokeColor=#446b90;fontSize=17;fontFamily=Arial;fontColor=#152536;" vertex="1" parent="aks">
           <mxGeometry as="geometry" x="20" y="210" width="210" height="60" />
@@ -114,6 +117,9 @@
           <mxGeometry as="geometry" relative="1" />
         </mxCell>
         <mxCell id="e14" value="notify" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#43566a;fontColor=#334155;fontFamily=Arial;fontSize=13;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="grafana" target="discord">
+          <mxGeometry as="geometry" relative="1" />
+        </mxCell>
+        <mxCell id="e15" value="ingest" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endSize=8;strokeColor=#43566a;fontColor=#334155;fontFamily=Arial;fontSize=13;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="logs" target="workspace">
           <mxGeometry as="geometry" relative="1" />
         </mxCell>
       </root>

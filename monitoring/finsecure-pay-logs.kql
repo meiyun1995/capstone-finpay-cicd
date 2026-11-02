@@ -1,0 +1,9 @@
+ContainerLogV2
+| where TimeGenerated > ago(30m)
+| where PodNamespace == "default"
+| where ContainerName == "finsecure-pay"
+| extend Message = tostring(LogMessage)
+| where Message contains "/health" or Message contains "/validate"
+| project TimeGenerated, PodName, ContainerName, LogSource, Message
+| order by TimeGenerated desc
+| take 50

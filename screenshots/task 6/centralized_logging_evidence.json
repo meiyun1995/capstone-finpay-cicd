@@ -1,0 +1,118 @@
+{
+  "verified_at_utc": "2026-11-02T17:05:09.348961+00:00",
+  "verified_at_singapore": "2026-11-03T01:05:09.348961+08:00",
+  "setup": {
+    "captured_at_utc": "2026-11-02T17:04:01.398704+00:00",
+    "cluster": {
+      "Cluster": "aks-finsecure-pay",
+      "LoggingEnabled": true,
+      "ManagedIdentityAuth": "true",
+      "Region": "eastasia",
+      "State": "Succeeded"
+    },
+    "workspace": {
+      "Plan": "PerGB2018",
+      "Region": "eastasia",
+      "RetentionDays": 30,
+      "State": "Succeeded",
+      "Workspace": "law-finsecure-pay"
+    },
+    "data_collection_rule": {
+      "Name": "MSCI-eastasia-aks-finsecure-pay",
+      "Region": "eastasia",
+      "Streams": [
+        [
+          "Microsoft-ContainerLogV2"
+        ]
+      ]
+    },
+    "agents": [
+      {
+        "kind": "DaemonSet",
+        "name": "ama-logs",
+        "namespace": "kube-system",
+        "desired": 1,
+        "ready": 1,
+        "available": 1
+      },
+      {
+        "kind": "Deployment",
+        "name": "ama-logs-rs",
+        "namespace": "kube-system",
+        "desired": 1,
+        "ready": 1,
+        "available": 1
+      }
+    ]
+  },
+  "test_requests": {
+    "marker": "centralized-20261102T170032Z",
+    "requests": [
+      {
+        "time_utc": "2026-11-02T17:00:32.480097+00:00",
+        "path": "/health",
+        "attempt": 1,
+        "expected_status": 200,
+        "status": 200,
+        "body": "{\"status\":\"ok\"}\n"
+      },
+      {
+        "time_utc": "2026-11-02T17:00:36.753474+00:00",
+        "path": "/validate",
+        "attempt": 1,
+        "expected_status": 400,
+        "status": 400,
+        "body": "{\"errors\":[\"amount: must be greater than 0 and no more than 10000\"],\"valid\":false}\n"
+      }
+    ]
+  },
+  "query": {
+    "query": "ContainerLogV2\n| where TimeGenerated > ago(1h)\n| where PodNamespace == \"default\" and ContainerName == \"finsecure-pay\"\n| extend Message = tostring(LogMessage)\n| where Message contains \"centralized-20261102T170032Z\"\n| project TimeGenerated, PodName, ContainerName, LogSource, Message\n| order by TimeGenerated asc",
+    "timespan": "PT1H"
+  },
+  "query_response": {
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "TimeGenerated",
+            "type": "datetime"
+          },
+          {
+            "name": "PodName",
+            "type": "string"
+          },
+          {
+            "name": "ContainerName",
+            "type": "string"
+          },
+          {
+            "name": "LogSource",
+            "type": "string"
+          },
+          {
+            "name": "Message",
+            "type": "string"
+          }
+        ],
+        "name": "PrimaryResult",
+        "rows": [
+          [
+            "2026-11-02T17:00:36.88849Z",
+            "finsecure-pay-85c4c6ffcd-fmlrp",
+            "finsecure-pay",
+            "stdout",
+            "10.224.0.4 - - [02/Nov/2026:17:00:36 +0000] \"GET /health?logging_demo=centralized-20261102T170032Z HTTP/1.1\" 200 16 \"-\" \"Python-urllib/3.15\""
+          ],
+          [
+            "2026-11-02T17:00:36.9811211Z",
+            "finsecure-pay-85c4c6ffcd-p5rzn",
+            "finsecure-pay",
+            "stdout",
+            "10.224.0.4 - - [02/Nov/2026:17:00:36 +0000] \"POST /validate?logging_demo=centralized-20261102T170032Z HTTP/1.1\" 400 83 \"-\" \"Python-urllib/3.15\""
+          ]
+        ]
+      }
+    ]
+  }
+}

@@ -10,6 +10,8 @@ The project includes automated tests, a versioned Docker image, and a managed
 Azure Kubernetes Service deployment and a Jenkins pipeline that tests, scans,
 packages, publishes, and deploys versioned application images. Prometheus and
 Grafana provide live operational metrics and Discord alert notifications.
+Azure Monitor Container Insights forwards application container logs to a
+Log Analytics workspace for centralized search with 30-day retention.
 
 ## Final submission and task history
 
@@ -793,7 +795,9 @@ AKS kubelet/cAdvisor + kube-state-metrics + node exporter
                        ↓
                     Grafana → Discord (Firing / Resolved)
 
-Gunicorn stdout/stderr → Kubernetes container logs → kubectl logs
+Gunicorn stdout/stderr → Kubernetes container logs → kubectl logs (immediate)
+                                 ↓
+                    Azure Monitor Agent → Log Analytics (central search)
 ```
 
 | Setting | Configuration |
@@ -809,6 +813,9 @@ Gunicorn stdout/stderr → Kubernetes container logs → kubectl logs
 | Metrics retention | Two days, with a `6GB` retention-size setting |
 | Alert evaluator | Grafana-managed alerting; standalone Alertmanager disabled |
 | Notification destination | Discord contact point `finsecure-discord` |
+| Centralized logging | Azure Monitor Container Insights; `ContainerLogV2` stream |
+| Log workspace / retention | `law-finsecure-pay`, `eastasia` / 30 days |
+| Log collection authentication | Managed identity; no workspace keys in source |
 
 The two PVCs were verified as `Bound`. Resource requests and limits are defined
 in [values.yaml](monitoring/values.yaml). Before installation, the node showed
@@ -1003,7 +1010,10 @@ two replicas after repeating the experiment.
 ### Logging strategy and troubleshooting
 
 Gunicorn writes access logs to stdout (`--access-logfile -`) and its default
-error log to stderr. Kubernetes captures these container streams. Access logs
+error log to stderr. Kubernetes captures these container streams, and Azure
+Monitor Agent forwards them to the `law-finsecure-pay` Log Analytics workspace.
+This provides the cloud-native centralized logging facility alongside the
+Prometheus/Grafana metrics stack. Access logs
 show request paths and response statuses; timestamps and pod prefixes help
 identify when a request occurred and which replica handled it. Avoid logging
 credentials, full transaction payloads, or sensitive financial data.
@@ -1048,16 +1058,41 @@ kubectl --context aks-finsecure-pay -n default logs POD_NAME \
 ```
 
 Replace `POD_NAME` with a current pod name. Previous-container logs are not an
-archive of deleted pods. This setup uses Kubernetes-managed local log rotation
-and has no centralized logging backend or configured durable log-retention
-policy. Logs may become unavailable after rotation, pod deletion, or node loss.
-Prometheus stores metrics, not these logs; logs are not displayed in Grafana.
-A production extension could use Alloy/Loki or a cloud logging service for
-central retention and search.
+archive of deleted pods. Local logs are subject to Kubernetes-managed rotation
+and can disappear after rotation, pod deletion, or node loss. Logs already
+ingested into Log Analytics remain searchable independently of the original pod,
+subject to workspace access controls and the configured 30-day retention.
+
+For centralized search, open **Azure Portal → Log Analytics workspaces →
+law-finsecure-pay → Logs** and run
+[finsecure-pay-logs.kql](monitoring/finsecure-pay-logs.kql). The query searches
+`ContainerLogV2` across application replicas and shows timestamps, pod names,
+container names, log sources, and request messages. Its namespace filter scopes
+the search, rather than restricting agent collection. Prometheus stores metrics;
+the application logs are searched in Azure Monitor, not the Grafana dashboard.
+
+The [collection settings](monitoring/container-log-settings.json) request only
+the container-log stream, rather than duplicate the existing metrics collection.
+The [setup and troubleshooting notes](monitoring/centralized-logging.md) document
+the Azure prerequisites, managed identity, agent checks, and portal query steps.
+Log ingestion can incur Azure charges; avoid logging credentials, personal data,
+or full transaction payloads.
+
+On 3 November 2026 (Singapore time), end-to-end ingestion was verified with a
+unique request marker. The central query returned `/health` HTTP 200 from one
+application replica and `/validate` HTTP 400 from the other. Both Azure logging
+agents were Ready, the add-on provisioning state was `Succeeded`, and the
+workspace retention was 30 days. The
+[captured verification log](<screenshots/task 6/centralized_logging_evidence.txt>)
+and [raw query response with setup metadata](<screenshots/task 6/centralized_logging_evidence.json>)
+preserve the actual results without credentials.
+The [Azure Portal screenshot](<screenshots/task 6/log_analytics_azure.png>) shows
+the workspace query and ingested health-request records. Slide 8 includes this
+capture, and Slide 10 and the Task 7 report show the centralized logging path.
 
 ### Task 6 submission evidence
 
-The completed demonstration provides the following evidence for Slide 6:
+The completed demonstration provides the following evidence on presentation Slide 8:
 
 - Live dashboard showing CPU, memory, and available replicas, with refresh/time
   range visible.
@@ -1065,6 +1100,8 @@ The completed demonstration provides the following evidence for Slide 6:
   pending period, plus the actual Firing state.
 - Actual Discord Firing and Resolved notifications, with no webhook URL visible.
 - Terminal log inspection showing the expected 400 response for invalid input.
+- Centralized Azure Log Analytics query results showing marked 200/400 requests
+  from two distinct application pods, plus agent readiness and retention settings.
 - Restored Deployment state with two replicas, and committed monitoring values,
   dashboard export, and alert-rule export.
 
