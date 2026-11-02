@@ -1,0 +1,689 @@
+Started by an SCM change
+Obtained Jenkinsfile from git https://github.com/meiyun1995/capstone-finpay-cicd.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on finsecure-agent in /home/jenkins/agent/workspace/finsecure-pay-pipeline
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+No credentials specified
+Fetching changes from the remote Git repository
+ > git rev-parse --resolve-git-dir /home/jenkins/agent/workspace/finsecure-pay-pipeline/.git # timeout=10
+ > git config remote.origin.url https://github.com/meiyun1995/capstone-finpay-cicd.git # timeout=10
+Fetching upstream changes from https://github.com/meiyun1995/capstone-finpay-cicd.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/meiyun1995/capstone-finpay-cicd.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+Checking out Revision b699084969973322fb4b39d9299eb5195859ca8a (refs/remotes/origin/feature/devsecops)
+ > git rev-parse refs/remotes/origin/feature/devsecops^{commit} # timeout=10
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f b699084969973322fb4b39d9299eb5195859ca8a # timeout=10
+Commit message: "Add Trivy container scanning with High and Critical gate"
+ > git rev-list --no-walk 552483a4dc3d14b6b91f27c2243a28acd57f5fdc # timeout=10
+[Pipeline] sh
++ git log -1 --oneline
+b699084 Add Trivy container scanning with High and Critical gate
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] sh
++ docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:25 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.test
+#1 transferring dockerfile: 382B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 1.4s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [1/7] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#4 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 10.81kB done
+#5 DONE 0.0s
+
+#6 [2/7] WORKDIR /app
+#6 CACHED
+
+#7 [5/7] RUN python -m pip install --no-cache-dir bandit==1.9.4
+#7 CACHED
+
+#8 [6/7] COPY app.py transaction.py ./
+#8 CACHED
+
+#9 [3/7] COPY requirements.txt .
+#9 CACHED
+
+#10 [4/7] RUN python -m pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [7/7] COPY tests/ ./tests/
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:5dc5993c0806d936ef95e3d2ef2abb4ef851a07ecf24333a27c31b51010d9fb2 done
+#12 exporting config sha256:5aefb2bdb79bf86d25c7ea8ed4eb4dffc868a0b8bf1d74778b9cc7d5a023f75e done
+#12 exporting attestation manifest sha256:4281ab57e29e1fb3b27c10daef30d0b1d50d9ed96d91cbdca0cc4d322691735e 0.0s done
+#12 exporting manifest list sha256:0c9984d02f16a60206a4806f4673a1339e99404688b7a7b7e354470740966bd1
+#12 exporting manifest list sha256:0c9984d02f16a60206a4806f4673a1339e99404688b7a7b7e354470740966bd1 0.0s done
+#12 naming to docker.io/library/finsecure-pay-test:25 done
+#12 unpacking to docker.io/library/finsecure-pay-test:25 done
+#12 DONE 0.1s
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Test)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:25
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.1.1, pluggy-1.7.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+collecting ... collected 39 items
+
+tests/test_app.py::test_health PASSED                                    [  2%]
+tests/test_app.py::test_validate_valid_transaction[0.01] PASSED          [  5%]
+tests/test_app.py::test_validate_valid_transaction[150.5] PASSED         [  7%]
+tests/test_app.py::test_validate_valid_transaction[10000] PASSED         [ 10%]
+tests/test_app.py::test_validate_out_of_range_amount[0] PASSED           [ 12%]
+tests/test_app.py::test_validate_out_of_range_amount[-10] PASSED         [ 15%]
+tests/test_app.py::test_validate_out_of_range_amount[10000.01] PASSED    [ 17%]
+tests/test_app.py::test_validate_invalid_amount_type[150] PASSED         [ 20%]
+tests/test_app.py::test_validate_invalid_amount_type[True] PASSED        [ 23%]
+tests/test_app.py::test_validate_invalid_amount_type[False] PASSED       [ 25%]
+tests/test_app.py::test_validate_invalid_amount_type[None] PASSED        [ 28%]
+tests/test_app.py::test_validate_invalid_amount_type[amount4] PASSED     [ 30%]
+tests/test_app.py::test_validate_invalid_amount_type[amount5] PASSED     [ 33%]
+tests/test_app.py::test_valid_currencies[SGD] PASSED                     [ 35%]
+tests/test_app.py::test_valid_currencies[USD] PASSED                     [ 38%]
+tests/test_app.py::test_valid_currencies[EUR] PASSED                     [ 41%]
+tests/test_app.py::test_invalid_currencies[GBP] PASSED                   [ 43%]
+tests/test_app.py::test_invalid_currencies[sgd] PASSED                   [ 46%]
+tests/test_app.py::test_invalid_currencies[] PASSED                      [ 48%]
+tests/test_app.py::test_invalid_currencies[123] PASSED                   [ 51%]
+tests/test_app.py::test_invalid_currencies[None] PASSED                  [ 53%]
+tests/test_app.py::test_validate_missing_field[transaction_id] PASSED    [ 56%]
+tests/test_app.py::test_validate_missing_field[account_id] PASSED        [ 58%]
+tests/test_app.py::test_validate_missing_field[amount] PASSED            [ 61%]
+tests/test_app.py::test_validate_missing_field[currency] PASSED          [ 64%]
+tests/test_app.py::test_validate_invalid_identifier[-transaction_id] PASSED [ 66%]
+tests/test_app.py::test_validate_invalid_identifier[-account_id] PASSED  [ 69%]
+tests/test_app.py::test_validate_invalid_identifier[   -transaction_id] PASSED [ 71%]
+tests/test_app.py::test_validate_invalid_identifier[   -account_id] PASSED [ 74%]
+tests/test_app.py::test_validate_invalid_identifier[123-transaction_id] PASSED [ 76%]
+tests/test_app.py::test_validate_invalid_identifier[123-account_id] PASSED [ 79%]
+tests/test_app.py::test_validate_invalid_identifier[None-transaction_id] PASSED [ 82%]
+tests/test_app.py::test_validate_invalid_identifier[None-account_id] PASSED [ 84%]
+tests/test_app.py::test_wrong_content_type_request PASSED                [ 87%]
+tests/test_app.py::test_malformed_json_request PASSED                    [ 89%]
+tests/test_app.py::test_valid_json_bad_request[[]] PASSED                [ 92%]
+tests/test_app.py::test_valid_json_bad_request[null] PASSED              [ 94%]
+tests/test_app.py::test_valid_json_bad_request["hello"] PASSED           [ 97%]
+tests/test_app.py::test_valid_json_bad_request[123] PASSED               [100%]
+
+============================== 39 passed in 0.50s ==============================
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (SonarQube Analysis)
+[Pipeline] script
+[Pipeline] {
+[Pipeline] tool
+[Pipeline] withSonarQubeEnv
+Injecting SonarQube environment variables using the configuration: finsecure-sonarqube
+[Pipeline] {
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] withCredentials
+Masking supported pattern matches of $SONAR_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+08:40:57.033 INFO  Scanner configuration file: /home/jenkins/agent/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarScanner/conf/sonar-scanner.properties
+08:40:57.044 INFO  Project root configuration file: /home/jenkins/agent/workspace/finsecure-pay-pipeline/sonar-project.properties
+08:40:57.096 INFO  SonarScanner CLI 8.3.0.16463
+08:40:57.112 INFO  Linux 6.12.76-linuxkit amd64
+08:41:06.880 INFO  Communicating with SonarQube Community Build 26.10.0.133078
+08:41:06.882 INFO  JRE provisioning: os[linux], arch[x86_64]
+08:41:12.161 INFO  Starting SonarScanner Engine...
+08:41:12.165 INFO  Java 21.0.12.1 Eclipse Adoptium (64-bit)
+08:41:17.974 INFO  Load global settings
+08:41:18.182 INFO  Load global settings (done) | time=205ms
+08:41:18.187 INFO  Server id: 147B411E-AaGSvJtBwv1c_9fUT42i
+08:41:18.204 INFO  Loading required plugins
+08:41:18.205 INFO  Load plugins index
+08:41:18.235 INFO  Load plugins index (done) | time=30ms
+08:41:18.235 INFO  Load/download plugins
+08:41:18.864 INFO  Load/download plugins (done) | time=629ms
+08:41:19.384 INFO  Load project settings for component key: 'finsecure-pay'
+08:41:19.419 INFO  Load project settings for component key: 'finsecure-pay' (done) | time=35ms
+08:41:19.439 INFO  Process project properties
+08:41:19.461 INFO  Process project properties (done) | time=22ms
+08:41:19.478 INFO  Project key: finsecure-pay
+08:41:19.478 INFO  Base dir: /home/jenkins/agent/workspace/finsecure-pay-pipeline
+08:41:19.479 INFO  Working dir: /home/jenkins/agent/workspace/finsecure-pay-pipeline/.scannerwork
+08:41:19.685 INFO  Load quality profiles
+08:41:19.825 INFO  Load quality profiles (done) | time=140ms
+08:41:19.839 INFO  Auto-configuring with CI 'Jenkins'
+08:41:19.881 INFO  Load active rules
+08:41:20.321 INFO  Load active rules (done) | time=440ms
+08:41:20.333 INFO  Load analysis cache
+08:41:20.406 INFO  Load analysis cache (5.0 kB) | time=73ms
+08:41:20.615 INFO  Preprocessing files...
+08:41:20.703 INFO  1 language detected in 3 preprocessed files (done) | time=86ms
+08:41:20.704 INFO  0 files ignored because of scm ignore settings
+08:41:20.706 INFO  Loading plugins for detected languages
+08:41:20.708 INFO  Load/download plugins
+08:41:20.956 INFO  Load/download plugins (done) | time=249ms
+08:41:21.190 INFO  Load project repositories
+08:41:21.372 INFO  Load project repositories (done) | time=183ms
+08:41:21.437 INFO  Indexing files...
+08:41:21.438 INFO  Project configuration:
+08:41:21.455 INFO  3 files indexed (done) | time=17ms
+08:41:21.457 INFO  Quality profile for py: Sonar way core
+08:41:21.458 INFO  ------------- Run sensors on module FinSecure Pay
+08:41:21.536 INFO  Load metrics repository
+08:41:21.612 INFO  Load metrics repository (done) | time=76ms
+08:41:22.470 INFO  Sensor IaC YAML File Type Classification Sensor [iac]
+08:41:22.474 INFO  Sensor IaC YAML File Type Classification Sensor [iac] (done) | time=4ms
+08:41:22.475 INFO  Sensor IaC hadolint report Sensor [iac]
+08:41:22.476 INFO  Sensor IaC hadolint report Sensor [iac] (done) | time=0ms
+08:41:22.476 INFO  Sensor Java Config Sensor [iac]
+08:41:22.477 INFO  There are no files to be analyzed for the Java language
+08:41:22.477 INFO  Sensor Java Config Sensor [iac] (done) | time=0ms
+08:41:22.478 INFO  Sensor IaC Docker Sensor [iac]
+08:41:22.481 INFO  There are no files to be analyzed for the Docker language
+08:41:22.481 INFO  Sensor IaC Docker Sensor [iac] (done) | time=4ms
+08:41:22.482 INFO  Sensor Python Sensor [python]
+08:41:23.011 INFO  Starting global symbols computation
+08:41:23.033 INFO  3 source files to be analyzed
+08:41:23.475 INFO  3/3 source files have been analyzed
+08:41:23.478 INFO  Finished step global symbols computation in 463ms
+08:41:23.519 INFO  Starting rules execution
+08:41:23.530 INFO  3 source files to be analyzed
+08:41:26.224 INFO  3/3 source files have been analyzed
+08:41:26.224 INFO  Finished step rules execution in 2695ms
+08:41:26.225 INFO  The Python analyzer was able to leverage cached data from previous analyses for 0 out of 3 files. These files were not parsed.
+08:41:26.233 INFO  Sensor Python Sensor [python] (done) | time=3751ms
+08:41:26.233 INFO  Sensor Cobertura Sensor for Python coverage [python]
+08:41:26.252 INFO  Sensor Cobertura Sensor for Python coverage [python] (done) | time=18ms
+08:41:26.253 INFO  Sensor PythonXUnitSensor [python]
+08:41:26.260 INFO  Sensor PythonXUnitSensor [python] (done) | time=7ms
+08:41:26.260 INFO  Sensor Python Dependency Sensor [python]
+08:41:26.267 INFO  Sensor Python Dependency Sensor [python] (done) | time=7ms
+08:41:26.267 INFO  Sensor TextAndSecretsSensor [text]
+08:41:26.302 INFO  Available processors: 8
+08:41:26.302 INFO  Using 8 threads for analysis.
+08:41:27.542 INFO  Start fetching files for the text and secrets analysis
+08:41:27.571 INFO  Using Git CLI to retrieve dirty files
+08:41:27.601 INFO  Retrieving language associated files and files included via "sonar.text.inclusions" that are tracked by git
+08:41:27.602 INFO  Starting the text and secrets analysis
+08:41:27.613 INFO  3 source files to be analyzed for the text and secrets analysis
+08:41:27.640 INFO  3/3 source files have been analyzed for the text and secrets analysis
+08:41:27.648 INFO  Sensor TextAndSecretsSensor [text] (done) | time=1380ms
+08:41:27.658 INFO  ------------- Run sensors on project
+08:41:28.046 INFO  Sensor IaC Project Sensor [iac]
+08:41:28.049 INFO  Sensor IaC Project Sensor [iac] (done) | time=3ms
+08:41:28.050 INFO  Sensor Zero Coverage Sensor
+08:41:28.064 INFO  Sensor Zero Coverage Sensor (done) | time=14ms
+08:41:28.065 INFO  ------------- Gather SCA dependencies on project
+08:41:28.086 INFO  Dependency analysis skipped
+08:41:28.117 INFO  CPD Executor 1 file had no CPD blocks
+08:41:28.118 INFO  CPD Executor Calculating CPD for 1 file
+08:41:28.134 INFO  CPD Executor CPD calculation finished (done) | time=16ms
+08:41:28.154 INFO  SCM revision ID 'b699084969973322fb4b39d9299eb5195859ca8a'
+08:41:28.308 INFO  Analysis report generated in 162ms, dir size=176.2 kB
+08:41:28.352 INFO  Analysis report compressed in 43ms, zip size=31.7 kB
+08:41:28.408 INFO  Analysis report uploaded in 55ms
+08:41:28.410 INFO  ------------- Check Quality Gate status
+08:41:28.411 INFO  Waiting for the analysis report to be processed (max 300s)
+08:41:33.488 INFO  QUALITY GATE STATUS: PASSED - View details on http://sonarqube:9000/dashboard?id=finsecure-pay
+08:41:33.503 INFO  Analysis total time: 21.212 s
+08:41:33.542 INFO  SonarScanner Engine completed successfully
+08:41:33.575 INFO  EXECUTION SUCCESS
+08:41:33.576 INFO  Total time: 36.634s
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // withSonarQubeEnv
+[Pipeline] }
+[Pipeline] // script
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Snyk Dependency Scan)
+[Pipeline] withCredentials
+Masking supported pattern matches of $SNYK_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+Collecting blinker==1.9.0 (from -r requirements.txt (line 1))
+  Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Collecting click==8.5.0 (from -r requirements.txt (line 2))
+  Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting Flask==3.1.3 (from -r requirements.txt (line 3))
+  Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting gunicorn==26.2.0 (from -r requirements.txt (line 4))
+  Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)
+Collecting iniconfig==2.3.1 (from -r requirements.txt (line 5))
+  Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+Collecting itsdangerous==2.2.0 (from -r requirements.txt (line 6))
+  Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting Jinja2==3.1.6 (from -r requirements.txt (line 7))
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting MarkupSafe==3.0.4 (from -r requirements.txt (line 8))
+  Downloading markupsafe-3.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+Collecting packaging==26.3 (from -r requirements.txt (line 9))
+  Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Collecting pluggy==1.7.0 (from -r requirements.txt (line 10))
+  Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+Collecting Pygments==2.21.0 (from -r requirements.txt (line 11))
+  Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting pytest==9.1.1 (from -r requirements.txt (line 12))
+  Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+Collecting Werkzeug==3.1.9 (from -r requirements.txt (line 13))
+  Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)
+Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Downloading click-8.5.0-py3-none-any.whl (125 kB)
+Downloading flask-3.1.3-py3-none-any.whl (103 kB)
+Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)
+Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading markupsafe-3.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (23 kB)
+Downloading packaging-26.3-py3-none-any.whl (129 kB)
+Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 22.9 MB/s eta 0:00:00
+Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)
+Installing collected packages: Pygments, pluggy, packaging, MarkupSafe, itsdangerous, iniconfig, gunicorn, click, blinker, Werkzeug, pytest, Jinja2, Flask
+
+Successfully installed Flask-3.1.3 Jinja2-3.1.6 MarkupSafe-3.0.4 Pygments-2.21.0 Werkzeug-3.1.9 blinker-1.9.0 click-8.5.0 gunicorn-26.2.0 iniconfig-2.3.1 itsdangerous-2.2.0 packaging-26.3 pluggy-1.7.0 pytest-9.1.1
+Testing  (requirements.txt) ...
+
+Tested 13 dependencies for known issues, found 0 issues, 0 vulnerable paths.
+
+Open Security issues: 0
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Test Summary                                                                 │
+│                                                                              │
+│   Organization:                                                              │
+│   Test type:         Software Composition Analysis                           │
+│   Project name:      finsecure-pay-pipeline                                  │
+│   Project path:      /home/jenkins/agent/workspace/finsecure-pay-pipeline    │
+│   Target file:       requirements.txt                                        │
+│                                                                              │
+│   Total security issues: 0                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+💡 Tip
+
+   You are currently viewing results with --severity-threshold applied.
+   To view all issues, remove the --severity-threshold flag            
+                                                                       
+
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+[Pipeline] }
+[Pipeline] // withCredentials
+Post stage
+[Pipeline] archiveArtifacts
+Archiving artifacts
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Package)
+[Pipeline] sh
++ mkdir -p dist
++ git archive --format=tar.gz --output=dist/finsecure-pay-25.tar.gz HEAD app.py transaction.py requirements.txt Dockerfile k8s README.md
+[Pipeline] archiveArtifacts
+Archiving artifacts
+Recording fingerprints
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Security Checks)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:25 python -m bandit app.py transaction.py
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.12.16
+Run started:2026-11-01 08:42:04.309595+00:00
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 98
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Container Build)
+[Pipeline] sh
++ docker build --platform linux/amd64 -t cmyaa/finsecure-pay:build-25 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 578B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B 0.0s done
+#3 DONE 0.0s
+
+#4 [1/6] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#4 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 98B done
+#5 DONE 0.0s
+
+#6 [3/6] COPY requirements.txt .
+#6 CACHED
+
+#7 [4/6] RUN python -m pip install --no-cache-dir -r requirements.txt
+#7 CACHED
+
+#8 [5/6] COPY app.py transaction.py ./
+#8 CACHED
+
+#9 [2/6] WORKDIR /app
+#9 CACHED
+
+#10 [6/6] RUN groupadd --gid 10001 appuser     && useradd --uid 10001 --gid appuser --no-create-home        --shell /usr/sbin/nologin appuser
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers
+#11 exporting layers done
+#11 exporting manifest sha256:cf90c23a1e3a1b88cf94e4bec172e6d040d7ced528ac09b2cfbcdbba2079f2ec done
+#11 exporting config sha256:0fe5d553c32664e08e1bb86dbe8ebae2ee27182b5b28343836bdedb86e98ac1a done
+#11 exporting attestation manifest sha256:d9e8ea7bb36a32837561530584f660d8d92f899f852f16c45065a3cf3294a0ea 0.0s done
+#11 exporting manifest list sha256:743e7a714fb48ffc9a594f93e717585045b7d39741cb5e89cd64da400c7a858e 0.0s done
+#11 naming to docker.io/cmyaa/finsecure-pay:build-25 done
+#11 unpacking to docker.io/cmyaa/finsecure-pay:build-25 done
+#11 DONE 0.1s
++ docker image inspect cmyaa/finsecure-pay:build-25 --format {{.Os}}/{{.Architecture}}
+linux/amd64
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Trivy Container Scan)
+[Pipeline] sh
++ set -eu
++ mkdir -p reports
++ mktemp
++ IMAGE_ARCHIVE=/tmp/tmp.NPzxdTaBLK
++ trap rm -f "$IMAGE_ARCHIVE" EXIT
++ docker save cmyaa/finsecure-pay:build-25 --output /tmp/tmp.NPzxdTaBLK
++ trivy image --input /tmp/tmp.NPzxdTaBLK --scanners vuln --timeout 10m --exit-code 0 --format json --output reports/trivy-25.json
+2026-11-01T08:42:08Z	INFO	[vulndb] Need to update DB
+2026-11-01T08:42:08Z	INFO	[vulndb] Downloading vulnerability DB...
+2026-11-01T08:42:08Z	INFO	[vulndb] Downloading artifact...	repo="mirror.gcr.io/aquasec/trivy-db:2"
+1.88 MiB / 131.14 MiB [>_____________________________________________________________] 1.44% ? p/s ?4.50 MiB / 131.14 MiB [-->___________________________________________________________] 3.43% ? p/s ?8.42 MiB / 131.14 MiB [--->__________________________________________________________] 6.42% ? p/s ?12.53 MiB / 131.14 MiB [---->___________________________________________] 9.56% 17.75 MiB p/s ETA 6s15.90 MiB / 131.14 MiB [----->_________________________________________] 12.12% 17.75 MiB p/s ETA 6s20.30 MiB / 131.14 MiB [------->_______________________________________] 15.48% 17.75 MiB p/s ETA 6s23.55 MiB / 131.14 MiB [-------->______________________________________] 17.96% 17.79 MiB p/s ETA 6s27.40 MiB / 131.14 MiB [--------->_____________________________________] 20.89% 17.79 MiB p/s ETA 5s31.52 MiB / 131.14 MiB [----------->___________________________________] 24.04% 17.79 MiB p/s ETA 5s35.41 MiB / 131.14 MiB [------------>__________________________________] 27.00% 17.92 MiB p/s ETA 5s38.92 MiB / 131.14 MiB [------------->_________________________________] 29.68% 17.92 MiB p/s ETA 5s42.49 MiB / 131.14 MiB [--------------->_______________________________] 32.40% 17.92 MiB p/s ETA 4s46.17 MiB / 131.14 MiB [---------------->______________________________] 35.21% 17.92 MiB p/s ETA 4s48.86 MiB / 131.14 MiB [----------------->_____________________________] 37.26% 17.92 MiB p/s ETA 4s52.72 MiB / 131.14 MiB [------------------>____________________________] 40.20% 17.92 MiB p/s ETA 4s55.50 MiB / 131.14 MiB [------------------->___________________________] 42.32% 17.77 MiB p/s ETA 4s59.24 MiB / 131.14 MiB [--------------------->_________________________] 45.17% 17.77 MiB p/s ETA 4s61.80 MiB / 131.14 MiB [---------------------->________________________] 47.13% 17.77 MiB p/s ETA 3s65.82 MiB / 131.14 MiB [----------------------->_______________________] 50.19% 17.73 MiB p/s ETA 3s70.63 MiB / 131.14 MiB [------------------------->_____________________] 53.86% 17.73 MiB p/s ETA 3s75.09 MiB / 131.14 MiB [-------------------------->____________________] 57.26% 17.73 MiB p/s ETA 3s78.28 MiB / 131.14 MiB [---------------------------->__________________] 59.69% 17.93 MiB p/s ETA 2s80.11 MiB / 131.14 MiB [---------------------------->__________________] 61.09% 17.93 MiB p/s ETA 2s83.70 MiB / 131.14 MiB [----------------------------->_________________] 63.82% 17.93 MiB p/s ETA 2s87.95 MiB / 131.14 MiB [------------------------------->_______________] 67.06% 17.81 MiB p/s ETA 2s91.82 MiB / 131.14 MiB [-------------------------------->______________] 70.02% 17.81 MiB p/s ETA 2s95.38 MiB / 131.14 MiB [---------------------------------->____________] 72.73% 17.81 MiB p/s ETA 2s98.98 MiB / 131.14 MiB [----------------------------------->___________] 75.47% 17.85 MiB p/s ETA 1s103.04 MiB / 131.14 MiB [------------------------------------>_________] 78.57% 17.85 MiB p/s ETA 1s106.68 MiB / 131.14 MiB [------------------------------------->________] 81.34% 17.85 MiB p/s ETA 1s109.23 MiB / 131.14 MiB [-------------------------------------->_______] 83.29% 17.80 MiB p/s ETA 1s110.22 MiB / 131.14 MiB [-------------------------------------->_______] 84.05% 17.80 MiB p/s ETA 1s113.71 MiB / 131.14 MiB [--------------------------------------->______] 86.71% 17.80 MiB p/s ETA 0s116.69 MiB / 131.14 MiB [---------------------------------------->_____] 88.98% 17.45 MiB p/s ETA 0s119.92 MiB / 131.14 MiB [------------------------------------------>___] 91.44% 17.45 MiB p/s ETA 0s123.51 MiB / 131.14 MiB [------------------------------------------->__] 94.18% 17.45 MiB p/s ETA 0s127.27 MiB / 131.14 MiB [-------------------------------------------->_] 97.05% 17.46 MiB p/s ETA 0s131.13 MiB / 131.14 MiB [--------------------------------------------->] 99.99% 17.46 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 17.46 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 16.75 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 16.75 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 16.75 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 15.67 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 15.67 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 15.67 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 14.66 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 14.66 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 14.66 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 13.71 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 13.71 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 13.71 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.00 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.00 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 12.00 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 11.23 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 11.23 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 11.23 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 10.50 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 10.50 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------->] 100.00% 10.50 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.83 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.19 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.19 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 9.19 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.60 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.60 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.60 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 8.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.53 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.53 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.53 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 7.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 6.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.76 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.76 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.76 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.39 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.39 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.39 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 5.04 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.72 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.72 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.72 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.41 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.41 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.41 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.13 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.13 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 4.13 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.86 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.86 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.86 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.61 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.61 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.61 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.38 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.38 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.38 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 3.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.96 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.96 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.96 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.77 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.77 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.77 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.59 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.27 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.27 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.27 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.12 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.12 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 2.12 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.98 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.98 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.98 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.85 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.85 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.85 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.74 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.74 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.74 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.62 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.62 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.62 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.52 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.52 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.52 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.42 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.33 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.33 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.33 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.24 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.24 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.24 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.16 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.09 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.09 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.09 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.02 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [--------------------------------------------->] 100.00% 1.02 MiB p/s ETA 0s131.14 MiB / 131.14 MiB [-------------------------------------------------] 100.00% 3.93 MiB p/s 34s2026-11-01T08:42:42Z	INFO	[vulndb] Artifact successfully downloaded	repo="mirror.gcr.io/aquasec/trivy-db:2"
+2026-11-01T08:42:42Z	INFO	[vuln] Vulnerability scanning is enabled
+2026-11-01T08:42:43Z	INFO	[python] Licenses acquired from one or more METADATA files may be subject to additional terms. Use `--debug` flag to see all affected packages.
+2026-11-01T08:42:44Z	INFO	Detected OS	family="debian" version="13.7"
+2026-11-01T08:42:44Z	INFO	[debian] Detecting vulnerabilities...	os_version="13" pkg_num=87
+2026-11-01T08:42:44Z	INFO	Number of language-specific files	num=1
+2026-11-01T08:42:44Z	INFO	[python-pkg] Detecting vulnerabilities...
+2026-11-01T08:42:44Z	WARN	Using severities from other vendors for some vulnerabilities. Read https://trivy.dev/docs/v0.76/guide/scanner/vulnerability#severity-selection for details.
++ trivy convert --format table --severity HIGH,CRITICAL --exit-code 1 reports/trivy-25.json
+2026-11-01T08:42:44Z	WARN	[report] No enabled scanners found. Summary table will not be displayed.
+
+For OSS Maintainers: VEX Notice
+--------------------------------
+If you're an OSS maintainer and Trivy has detected vulnerabilities in your project that you believe are not actually exploitable, consider issuing a VEX (Vulnerability Exploitability eXchange) statement.
+VEX allows you to communicate the actual status of vulnerabilities in your project, improving security transparency and reducing false positives for your users.
+Learn more and start using VEX: https://trivy.dev/docs/v0.76/guide/supply-chain/vex/repo#publishing-vex-documents
+
+To disable this notice, set the TRIVY_DISABLE_VEX_NOTICE environment variable.
+
+
+/tmp/tmp.NPzxdTaBLK (debian 13.7)
+=================================
+Total: 44 (HIGH: 44, CRITICAL: 0)
+
+┌───────────────┬────────────────┬──────────┬──────────────┬───────────────────────────────────┬───────────────┬─────────────────────────────────────────────────────────────┐
+│    Library    │ Vulnerability  │ Severity │    Status    │         Installed Version         │ Fixed Version │                            Title                            │
+├───────────────┼────────────────┼──────────┼──────────────┼───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ bsdutils      │ CVE-2026-76642 │ HIGH     │ affected     │ 1:2.41.5-0+deb13u1                │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libacl1       │ CVE-2026-54369 │          │              │ 2.3.2-2+b1                        │               │ acl: Symlink traversal privilege escalation via libacl      │
+│               │                │          │              │                                   │               │ functions                                                   │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-54369                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libblkid1     │ CVE-2026-76642 │          │              │ 2.41.5-0+deb13u1                  │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│ liblastlog2-2 │ CVE-2026-76642 │          │              │                                   │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│ libmount1     │ CVE-2026-76642 │          │              │                                   │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libncursesw6  │ CVE-2025-69720 │          │              │ 6.5+20250216-2                    │               │ ncurses: ncurses: Buffer overflow vulnerability may lead to │
+│               │                │          │              │                                   │               │ arbitrary code execution.                                   │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2025-69720                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libsmartcols1 │ CVE-2026-76642 │          │              │ 2.41.5-0+deb13u1                  │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libsystemd0   │ CVE-2026-16742 │          │              │ 257.13-1~deb13u1                  │               │ systemd: systemd-homed: Local privilege escalation via      │
+│               │                │          │              │                                   │               │ missing home-record signature verification                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-16742                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libtinfo6     │ CVE-2025-69720 │          │              │ 6.5+20250216-2                    │               │ ncurses: ncurses: Buffer overflow vulnerability may lead to │
+│               │                │          │              │                                   │               │ arbitrary code execution.                                   │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2025-69720                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libudev1      │ CVE-2026-16742 │          │              │ 257.13-1~deb13u1                  │               │ systemd: systemd-homed: Local privilege escalation via      │
+│               │                │          │              │                                   │               │ missing home-record signature verification                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-16742                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ libuuid1      │ CVE-2026-76642 │          │              │ 2.41.5-0+deb13u1                  │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ login         │ CVE-2026-76642 │          │              │ 1:4.16.0-2+really2.41.5-0+deb13u1 │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ mount         │ CVE-2026-76642 │          │              │ 2.41.5-0+deb13u1                  │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+├───────────────┼────────────────┤          │              ├───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ ncurses-base  │ CVE-2025-69720 │          │              │ 6.5+20250216-2                    │               │ ncurses: ncurses: Buffer overflow vulnerability may lead to │
+│               │                │          │              │                                   │               │ arbitrary code execution.                                   │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2025-69720                  │
+├───────────────┤                │          │              │                                   ├───────────────┤                                                             │
+│ ncurses-bin   │                │          │              │                                   │               │                                                             │
+│               │                │          │              │                                   │               │                                                             │
+│               │                │          │              │                                   │               │                                                             │
+├───────────────┼────────────────┤          ├──────────────┼───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ perl-base     │ CVE-2026-9538  │          │ fix_deferred │ 5.40.1-6+deb13u1                  │               │ perl-Archive-Tar: perl-Archive-Tar: Denial of Service via   │
+│               │                │          │              │                                   │               │ crafted tar header with large entry...                      │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-9538                   │
+├───────────────┼────────────────┤          ├──────────────┼───────────────────────────────────┼───────────────┼─────────────────────────────────────────────────────────────┤
+│ util-linux    │ CVE-2026-76642 │          │ affected     │ 2.41.5-0+deb13u1                  │               │ util-linux: util-linux: failed external mount helper still  │
+│               │                │          │              │                                   │               │ runs privileged X-mount post-hooks                          │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-76642                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78408 │          │              │                                   │               │ util-linux: util-linux: nsenter --join-cgroup leaks root    │
+│               │                │          │              │                                   │               │ cgroup migration authority                                  │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78408                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78409 │          │              │                                   │               │ util-linux: util-linux: X-mount.subdir detached-tree        │
+│               │                │          │              │                                   │               │ resolution can escape via intermediate symlinks             │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78409                  │
+│               ├────────────────┤          │              │                                   ├───────────────┼─────────────────────────────────────────────────────────────┤
+│               │ CVE-2026-78410 │          │              │                                   │               │ util-linux: util-linux: restricted bind mounts do not pin   │
+│               │                │          │              │                                   │               │ the source, allowing X-mount.owner/group/mode...            │
+│               │                │          │              │                                   │               │ https://avd.aquasec.com/nvd/cve-2026-78410                  │
+└───────────────┴────────────────┴──────────┴──────────────┴───────────────────────────────────┴───────────────┴─────────────────────────────────────────────────────────────┘
++ rm -f /tmp/tmp.NPzxdTaBLK
+Post stage
+[Pipeline] archiveArtifacts
+Archiving artifacts
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Push)
+Stage "Push" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Deploy)
+Stage "Deploy" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+ERROR: script returned exit code 1
+Finished: FAILURE

@@ -1,0 +1,66 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: finsecure-monitoring
+      folder: FinSecure Pay
+      interval: 30s
+      rules:
+        - uid: eg2zui03n8etcc
+          title: FinSecure Pay — Insufficient replicas
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: prometheus
+              model:
+                editorMode: code
+                expr: |-
+                    max(
+                      kube_deployment_status_replicas_available{
+                        namespace="default",
+                        deployment="finsecure-pay"
+                      }
+                    )
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 2
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 1m
+          annotations:
+            description: Check Deployment status, pod readiness, events, and application logs in namespace default.
+            summary: FinSecure Pay has fewer than two available replicas.
+          isPaused: false
+          notification_settings:
+            receiver: finsecure-discord

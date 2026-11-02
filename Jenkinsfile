@@ -1,0 +1,237 @@
+// Run pipeline stages on the dedicated build agent.
+pipeline {
+    agent {
+        label 'finsecure-agent'
+    }
+
+    options {
+        skipDefaultCheckout()
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                sh 'git log -1 --oneline'
+            }
+        }
+    
+
+        stage('Build') {
+            steps {
+                sh 'docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:$BUILD_NUMBER .'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'docker run --rm finsecure-pay-test:$BUILD_NUMBER'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    def scannerHome = tool 'SonarScanner'
+
+                    withSonarQubeEnv('finsecure-sonarqube') {
+                        withEnv(["SCANNER_HOME=${scannerHome}"]) {
+                            withCredentials([
+                                string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')
+                            ]) {
+                                sh '''
+                                    set +x
+                                    "$SCANNER_HOME/bin/sonar-scanner"
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }       
+
+
+        stage('Snyk Dependency Scan') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')
+                ]) {
+                    sh '''
+                        set +x
+                        set -eu
+
+                        mkdir -p reports
+                        SCA_ENV="$(mktemp -d)"
+                        trap 'rm -rf "$SCA_ENV"' EXIT
+
+                        python3 -m venv "$SCA_ENV"
+                        "$SCA_ENV/bin/python" -m pip install \
+                            --no-cache-dir -r requirements.txt
+
+                        snyk test \
+                            --file=requirements.txt \
+                            --command="$SCA_ENV/bin/python" \
+                            --severity-threshold=high \
+                            --json-file-output="reports/snyk-${BUILD_NUMBER}.json"
+                    '''
+                }
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: "reports/snyk-${env.BUILD_NUMBER}.json",
+                        allowEmptyArchive: true
+                    )
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh '''
+                    mkdir -p dist
+                    git archive \
+                    --format=tar.gz \
+                    --output=dist/finsecure-pay-${BUILD_NUMBER}.tar.gz \
+                    HEAD \
+                    app.py transaction.py requirements.txt Dockerfile k8s README.md
+                '''
+
+                archiveArtifacts(
+                    artifacts: "dist/finsecure-pay-${env.BUILD_NUMBER}.tar.gz",
+                    fingerprint: true
+                )
+            }
+        }
+
+        stage('Security Checks') {
+            steps {
+                sh '''
+                    docker run --rm finsecure-pay-test:$BUILD_NUMBER \
+                    python -m bandit app.py transaction.py
+                '''
+            }
+        }
+
+        stage('Container Build') {
+            steps {
+                sh '''
+                    docker build \
+                    --platform linux/amd64 \
+                    -t cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    .
+
+                    docker image inspect \
+                    cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    --format '{{.Os}}/{{.Architecture}}'
+                '''
+            }
+        }    
+
+        stage('Trivy Container Scan') {
+        steps {
+            sh '''
+                set -eu
+
+                mkdir -p reports
+                IMAGE_ARCHIVE="$(mktemp)"
+                trap 'rm -f "$IMAGE_ARCHIVE"' EXIT
+
+                docker save \
+                    cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    --output "$IMAGE_ARCHIVE"
+
+                trivy image \
+                    --input "$IMAGE_ARCHIVE" \
+                    --scanners vuln \
+                    --timeout 10m \
+                    --exit-code 0 \
+                    --format json \
+                    --output "reports/trivy-${BUILD_NUMBER}.json"
+
+                trivy convert \
+                    --format table \
+                    --severity HIGH,CRITICAL \
+                    --exit-code 1 \
+                    "reports/trivy-${BUILD_NUMBER}.json"
+            '''
+        }
+
+        post {
+            always {
+                archiveArtifacts(
+                    artifacts: "reports/trivy-${env.BUILD_NUMBER}.json",
+                    allowEmptyArchive: true
+                )
+            }
+        }
+    }
+
+        stage('Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USERNAME',
+                        passwordVariable: 'DOCKERHUB_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set +x
+                        export DOCKER_CONFIG="$(mktemp -d)"
+                        trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+
+                        printf '%s' "$DOCKERHUB_TOKEN" |
+                        docker login \
+                            --username "$DOCKERHUB_USERNAME" \
+                            --password-stdin
+
+                        docker push cmyaa/finsecure-pay:build-${BUILD_NUMBER}
+                    '''
+                }
+            }
+        }
+
+    stage('Deploy') {
+        steps {
+            withCredentials([
+                file(
+                    credentialsId: 'aks-kubeconfig',
+                    variable: 'KUBECONFIG'
+                )
+            ]) {
+                sh '''
+                    set -eu
+
+                    kubectl --namespace default apply \
+                    -f k8s/configmap.yaml \
+                    -f k8s/service.yaml
+
+                    DEPLOY_MANIFEST="$(mktemp)"
+                    trap 'rm -f "$DEPLOY_MANIFEST"' EXIT
+
+                    kubectl set image \
+                    --local \
+                    -f k8s/deployment.yaml \
+                    finsecure-pay=cmyaa/finsecure-pay:build-${BUILD_NUMBER} \
+                    -o yaml > "$DEPLOY_MANIFEST"
+
+                    kubectl --namespace default apply -f "$DEPLOY_MANIFEST"
+
+                    kubectl --namespace default rollout status \
+                    deployment/finsecure-pay --timeout=180s
+
+                    kubectl --namespace default get deployment finsecure-pay -o wide
+                    kubectl --namespace default get pods -l app=finsecure-pay -o wide
+                '''
+            }
+        }
+    }
+}
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+}

@@ -1,0 +1,61 @@
+FROM jenkins/inbound-agent:jdk21@sha256:5069347cd3e72e5924e54c04fceb67209b41c8d0a3ab1c2b3f740e5fb2fab92a
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       ca-certificates \
+       curl \
+       git \
+       python3 \
+       python3-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg \
+       -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian trixie stable" \
+       > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+       docker-ce-cli \
+       docker-buildx-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+    ARG KUBECTL_VERSION=v1.36.2
+
+RUN ARCH="$(dpkg --print-architecture)" \
+    && curl -fsSL \
+       "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl" \
+       -o /tmp/kubectl \
+    && curl -fsSL \
+       "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/${ARCH}/kubectl.sha256" \
+       -o /tmp/kubectl.sha256 \
+    && cd /tmp \
+    && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check \
+    && install -m 0755 kubectl /usr/local/bin/kubectl \
+    && rm kubectl kubectl.sha256
+
+ARG SNYK_VERSION=1.1308.3
+ARG SNYK_SHA256=5f323f45885341ea1473639859271925912ece82a2f77bc146bb4468f9838840
+
+RUN curl -fsSL \
+       "https://downloads.snyk.io/cli/v${SNYK_VERSION}/snyk-linux" \
+       -o /tmp/snyk-linux \
+    && echo "${SNYK_SHA256}  /tmp/snyk-linux" | sha256sum --check \
+    && install -m 0755 /tmp/snyk-linux /usr/local/bin/snyk \
+    && rm /tmp/snyk-linux
+
+ARG TRIVY_VERSION=0.76.1
+ARG TRIVY_SHA256=c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+
+RUN curl -fsSL \
+       "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+       -o /tmp/trivy.tar.gz \
+    && echo "${TRIVY_SHA256}  /tmp/trivy.tar.gz" | sha256sum --check \
+    && tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy \
+    && chmod 0755 /usr/local/bin/trivy \
+    && rm /tmp/trivy.tar.gz
+    
+USER jenkins
