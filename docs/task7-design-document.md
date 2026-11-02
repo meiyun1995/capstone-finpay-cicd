@@ -1,12 +1,12 @@
 # FinSecure Pay CI CD and AI Operations Design
 
-Task 7 design document | 2 November 2026
+Task 7 design document | 3 November 2026
 
 The Word and PDF editions are formatted as five pages.
 
 ## 1 System scope and architecture
 
-FinSecure Pay needs a repeatable way to release a transaction validation API while detecting defects and responding to operational problems. I implemented a Jenkins pipeline that tests and scans each release, publishes a versioned Docker image, and updates Azure Kubernetes Service (AKS). Prometheus, Grafana, and Discord provide operational visibility. This document explains the implemented design and proposes an AI assistant for incident triage.
+FinSecure Pay needs a repeatable way to release a transaction validation API while detecting defects and responding to operational problems. I implemented a Jenkins pipeline that tests and scans each release, publishes a versioned Docker image, and updates Azure Kubernetes Service (AKS). Prometheus, Grafana, and Discord provide metrics and alerts. Azure Monitor centralizes application logs in Log Analytics. This document explains the implemented design and proposes an AI assistant for incident triage.
 
 The Flask application exposes GET /health and POST /validate. It checks identifiers, supported currencies, and a finite numeric amount greater than zero and no more than 10,000. It does not execute payments or store transactions. The AI feature described on pages 4 and 5 is conceptual only; no model has been built, trained, or deployed.
 
@@ -31,7 +31,7 @@ The last evidenced security-remediated release was cmyaa/finsecure-pay:build-27:
 | Python Flask and pytest | A small API keeps the business rules readable. The 39-case suite covers successful input, invalid fields, boundaries, and request-format errors. It does not establish exhaustive coverage. |
 | Jenkins and Docker | A declarative pipeline makes release stages reviewable. Containerized tests use Python 3.12. Local Jenkins reduces cloud setup but depends on the Mac and Docker Desktop being available. |
 | Docker Hub and AKS | Docker Hub distributes Linux AMD64 images without registry migration. AKS provides managed orchestration. Public images suit this non-sensitive exercise; production access policies require review. |
-| Prometheus Grafana and Helm | The pinned monitoring chart packages metrics collection and dashboards. Grafana evaluates alerts and sends Discord notifications. Resource and storage settings are tracked in Helm values. |
+| Prometheus Grafana and Helm | The pinned monitoring chart packages metrics collection and dashboards. Grafana evaluates alerts and sends Discord notifications. Helm values track metrics storage. Azure Monitor adds managed-identity log collection with 30-day retention. |
 
 ### Release gates and artifact traceability
 
@@ -59,7 +59,7 @@ Kubernetes replaced a deleted pod automatically. Jenkins demonstrated a rollout 
 
 The live dashboard shows per-pod CPU in millicores, memory working set in MiB, and available replicas. Grafana checks the replica metric every 30 seconds and fires when availability stays below two for one minute. Scaling to one replica generated a real Discord Firing message; restoring two generated Resolved. CPU/memory panels are resource measurements, not application request-rate instrumentation.
 
-Gunicorn access/error streams are captured as container logs and inspected with kubectl logs using timestamps and pod prefixes. A deliberately invalid request returned 400 and appeared in the access log. This expected validation rejection is not a service failure. Prometheus retains metrics for two days; local container logs lack centralized durable retention. Persistent monitoring disks protect against pod replacement, not all data-loss scenarios.
+Azure Monitor Agent sends Gunicorn stdout/stderr to ContainerLogV2 in law-finsecure-pay, an East Asia Log Analytics workspace with 30-day retention and managed-identity authentication. On 3 November 2026 (Singapore time), marked /health 200 and /validate 400 entries from different replicas verified ingestion. The 400 is expected input rejection. kubectl logs supports immediate inspection; ingested workspace records survive the original pod lifecycle. Prometheus retains metrics for two days. Log ingestion incurs costs; exclude credentials and financial payloads.
 
 ### Lessons from implementation
 
@@ -84,11 +84,11 @@ When an alert fires, an engineer must compare metrics, pod events, logs, and rec
 
 ### Integration plan
 
-A future Grafana notification route would send a copy of an alert to an authenticated internal triage service while preserving direct Discord delivery. An alert fingerprint would deduplicate requests. A collector would retrieve a bounded time window of Prometheus metrics and read-only Kubernetes status/events/logs, then associate the latest relevant Jenkins release by time and image identity. It would collect only required data and redact it before model access.
+A future Grafana notification route would send a copy of an alert to an authenticated internal triage service while preserving direct Discord delivery. An alert fingerprint would deduplicate requests. A collector would retrieve a bounded time window of Prometheus metrics and read-only Kubernetes status/events and Log Analytics log excerpts, then associate the latest relevant Jenkins release by time and image identity. It would collect only required data and redact it before model access.
 
 An approved hosted or self-hosted language model would receive the sanitized bundle and trusted runbook excerpts. Its output would separate observed facts, ranked hypotheses, missing evidence, and safe next checks. Each hypothesis would cite an input record or timestamp. A short reviewed summary could appear beside the incident or in Discord; raw logs would remain in restricted storage. The AI would receive no kubectl write credentials, shell-execution tools, registry tokens, or Jenkins deployment authority.
 
-The triage service would be deployed independently in AKS with read-only, namespace-scoped access, resource limits, and restricted egress. Jenkins would version and test its prompts, redaction rules, and incident fixtures before release. This integration requires new collection/routing work: the current system has no AI service, centralized log backend, or automated release-context collector.
+The triage service would be deployed independently in AKS with read-only Kubernetes access scoped to the namespace, least-privilege workspace queries, resource limits, and restricted egress. Jenkins would version and test its prompts, redaction rules, and incident fixtures before release. This integration requires new collection/routing work: centralized logs are available, but the AI service, alert routing, and automated release-context collector remain proposed.
 
 ### Illustrative prompt and response
 
@@ -118,11 +118,11 @@ Proposed pilot acceptance targets are at least 90% of factual statements support
 
 ### Prioritized future improvements
 
-First, strengthen the operating platform: multiple nodes with pod spreading, TLS and authentication, request/error/latency instrumentation, centralized redacted logs, and monitoring backups. Then replace manual token renewal with a suitable short-lived identity flow, align SCA and runtime Python versions, and deploy images by digest. Provision dashboards and alerts automatically and separate test-only dependencies from the runtime image. The AI pilot should follow these data-quality and access-control foundations.
+First, strengthen the operating platform: multiple nodes with pod spreading, TLS and authentication, request/error/latency instrumentation, automated log redaction, and monitoring backups. Then replace manual token renewal with a suitable short-lived identity flow, align SCA and runtime Python versions, and deploy images by digest. Provision dashboards and alerts automatically and separate test-only dependencies from the runtime image. The AI pilot should follow these data-quality and access-control foundations.
 
 ### References
 
-[1] Project evidence: README.md, Jenkinsfile, Dockerfiles, k8s manifests, and monitoring exports. Repository: github.com/meiyun1995/capstone-finpay-cicd. Verified demonstrations through 1 November 2026.
+[1] Project evidence: README.md, Jenkinsfile, Dockerfiles, k8s manifests, and monitoring exports. Repository: github.com/meiyun1995/capstone-finpay-cicd. Release evidence through 1 November and centralized logging verified 3 November 2026.
 
 [2] NIST AI 600-1, Generative Artificial Intelligence Profile (2024). https://doi.org/10.6028/NIST.AI.600-1
 

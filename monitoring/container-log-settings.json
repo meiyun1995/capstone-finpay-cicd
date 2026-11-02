@@ -1,0 +1,6 @@
+{
+  "enableContainerLogV2": true,
+  "streams": [
+    "Microsoft-ContainerLogV2"
+  ]
+}

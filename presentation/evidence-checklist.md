@@ -1,9 +1,17 @@
 # Capstone presentation evidence review
 
-Reviewed against the 29 evidence items supplied for Tasks 1–6 on 2 November 2026.
+Reviewed against the 29 evidence items supplied for Tasks 1–6, updated 3 November 2026.
 The revised [PowerPoint](finsecure-pay-capstone.pptx) and
 [PDF](finsecure-pay-capstone.pdf) remain 10 slides and also retain the Task 7
 AI proposal, architecture, technical decisions, lessons, and project links.
+
+The 3 November update adds Azure Monitor / Log Analytics centralized logging.
+Slide 8 includes the [Azure Portal query screenshot](<../screenshots/task 6/log_analytics_azure.png>)
+alongside the original dashboard, alert, Discord, and local-log evidence. Slide 10
+and the Task 7 report include the implemented logging path. The
+[actual query and setup evidence](<../screenshots/task 6/centralized_logging_evidence.txt>)
+records managed-identity authentication, ready agents, 30-day retention, and
+marked 200/400 requests from two distinct pods.
 
 All 29 evidence types have a visible representation in the revised slides.
 Where a source/configuration screenshot did not exist, the slides use actual
@@ -41,9 +49,9 @@ removed and long lines wrapped.
 | 6 | Monitoring dashboard | Present | 8 | [Grafana dashboard](<../screenshots/task 6/dashboard_restored_2_replica.png>) |
 | 6 | Metrics | Present | 8 | Same dashboard's live CPU, memory working set, and replica panels |
 | 6 | Alert configuration | Written threshold only | 8 | Threshold block cropped from [Grafana alert rule](<../screenshots/task 6/firing_state.png>), with pending/evaluation settings in slide text |
-| 6 | Triggered alert | Present | 8 | Actual Firing header and Firing threshold state from the same alert capture |
+| 6 | Triggered alert | Present | 8 | Actual Firing threshold state from the same alert capture |
 | 6 | Received notification | Present | 8 | [Received Discord firing message](<../screenshots/task 6/discord_alert.png>); webhook URL excluded |
-| 6 | Logging/troubleshooting | Present | 8 | [kubectl logs capture](<../screenshots/task 6/kubectl_logs_200_400.png>) showing expected `/health` 200 and invalid `/validate` 400 |
+| 6 | Logging/troubleshooting | Local logs only | 8, 10 | [Azure Log Analytics query](<../screenshots/task 6/log_analytics_azure.png>) shows centralized health logs; [kubectl logs capture](<../screenshots/task 6/kubectl_logs_200_400.png>) shows immediate 200/400 troubleshooting. [API verification](<../screenshots/task 6/centralized_logging_evidence.json>) records both marked responses in the workspace. |
 
 ## Evidence interpretation
 
@@ -61,8 +69,10 @@ removed and long lines wrapped.
   demonstrated vulnerability remediation.
 - Recovery proves that a deleted pod was replaced. Two replicas still share
   one AKS worker node. No node-level availability guarantee is claimed.
-- Grafana monitors replicas, CPU, and memory. Application logs remain available
-  through `kubectl logs`; no centralized log dashboard has been configured.
+- Grafana displays Prometheus metrics. Azure Monitor Agent sends container logs
+  to Log Analytics for centralized search with 30-day retention; `kubectl logs`
+  supports immediate inspection. The Azure screenshot shows health records;
+  the separate API evidence contains the marked 200 and 400 records.
 
 The full captures and logs remain unchanged in `screenshots/`. The presentation
 uses focused crops and editable code/log excerpts to fit the submission limit.
