@@ -1048,6 +1048,35 @@ retention means the demonstration's graph data will expire. Persistent disks and
 the shared AKS node still incur costs; review retained PVCs/disks when cleaning up
 the monitoring installation.
 
+## Task 7: Design document and conceptual AI use case
+
+The [Task 7 design document](docs/task7-design-document.md) describes the
+implemented delivery architecture, technical decisions, security controls,
+availability trade-offs, operational results, and lessons learned. It proposes
+an AI assistant for incident triage with defined inputs, integration steps,
+privacy controls, human accountability, and pilot evaluation criteria.
+The AI feature is conceptual only and has not been implemented or evaluated.
+
+The [editable Word report](docs/task7-design-document.docx) and
+[submission PDF](docs/task7-design-document.pdf) are formatted as five pages.
+The architecture figure is included in the report, with an
+[editable diagram source](docs/assets/finsecure-architecture.drawio) retained
+alongside the document.
+
+## Final capstone presentation
+
+The [10-slide PowerPoint](presentation/finsecure-pay-capstone.pptx) and
+[presentation PDF](presentation/finsecure-pay-capstone.pdf) cover Tasks 1–7,
+including implementation evidence, security remediation, monitoring and
+notifications, recovery and rollback, the architecture, and the conceptual AI
+proposal. The slides include public GitHub and Docker Hub links and speaker
+notes with supporting context.
+
+The [evidence checklist](presentation/evidence-checklist.md) maps all 29 expected
+evidence items for Tasks 1–6 to the revised slide numbers and original source
+files. Source/configuration files appear as repository excerpts where no
+dedicated screenshot was captured.
+
 ## Development workflow
 
 Work on a feature branch, run the tests, and review changes before committing.
