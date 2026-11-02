@@ -1,0 +1,609 @@
+Started by user Chua Mei Yun
+Obtained Jenkinsfile from git https://github.com/meiyun1995/capstone-finpay-cicd.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on finsecure-agent in /home/jenkins/agent/workspace/finsecure-pay-pipeline
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+No credentials specified
+Fetching changes from the remote Git repository
+Checking out Revision 552483a4dc3d14b6b91f27c2243a28acd57f5fdc (refs/remotes/origin/feature/devsecops)
+Commit message: "Add Snyk dependency scanning with High severity gate"
+ > git rev-parse --resolve-git-dir /home/jenkins/agent/workspace/finsecure-pay-pipeline/.git # timeout=10
+ > git config remote.origin.url https://github.com/meiyun1995/capstone-finpay-cicd.git # timeout=10
+Fetching upstream changes from https://github.com/meiyun1995/capstone-finpay-cicd.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/meiyun1995/capstone-finpay-cicd.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/feature/devsecops^{commit} # timeout=10
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 552483a4dc3d14b6b91f27c2243a28acd57f5fdc # timeout=10
+ > git rev-list --no-walk 552483a4dc3d14b6b91f27c2243a28acd57f5fdc # timeout=10
+[Pipeline] sh
++ git log -1 --oneline
+552483a Add Snyk dependency scanning with High severity gate
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] sh
++ docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:24 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.test
+#1 transferring dockerfile: 382B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 6.39kB done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#5 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#5 DONE 0.0s
+
+#6 [5/7] RUN python -m pip install --no-cache-dir bandit==1.9.4
+#6 CACHED
+
+#7 [6/7] COPY app.py transaction.py ./
+#7 CACHED
+
+#8 [3/7] COPY requirements.txt .
+#8 CACHED
+
+#9 [2/7] WORKDIR /app
+#9 CACHED
+
+#10 [4/7] RUN python -m pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [7/7] COPY tests/ ./tests/
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:5dc5993c0806d936ef95e3d2ef2abb4ef851a07ecf24333a27c31b51010d9fb2 done
+#12 exporting config sha256:5aefb2bdb79bf86d25c7ea8ed4eb4dffc868a0b8bf1d74778b9cc7d5a023f75e done
+#12 exporting attestation manifest sha256:0475abc1c0a7baded08d3c80e56582762f44d56f95aa85a357bb0d1e617302a6 0.0s done
+#12 exporting manifest list sha256:459a4219d64632eed6d1bb5fd8d54bef687625ef99464c1869dc16a32310d00f 0.0s done
+#12 naming to docker.io/library/finsecure-pay-test:24 done
+#12 unpacking to docker.io/library/finsecure-pay-test:24 done
+#12 DONE 0.1s
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Test)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:24
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.1.1, pluggy-1.7.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+collecting ... collected 39 items
+
+tests/test_app.py::test_health PASSED                                    [  2%]
+tests/test_app.py::test_validate_valid_transaction[0.01] PASSED          [  5%]
+tests/test_app.py::test_validate_valid_transaction[150.5] PASSED         [  7%]
+tests/test_app.py::test_validate_valid_transaction[10000] PASSED         [ 10%]
+tests/test_app.py::test_validate_out_of_range_amount[0] PASSED           [ 12%]
+tests/test_app.py::test_validate_out_of_range_amount[-10] PASSED         [ 15%]
+tests/test_app.py::test_validate_out_of_range_amount[10000.01] PASSED    [ 17%]
+tests/test_app.py::test_validate_invalid_amount_type[150] PASSED         [ 20%]
+tests/test_app.py::test_validate_invalid_amount_type[True] PASSED        [ 23%]
+tests/test_app.py::test_validate_invalid_amount_type[False] PASSED       [ 25%]
+tests/test_app.py::test_validate_invalid_amount_type[None] PASSED        [ 28%]
+tests/test_app.py::test_validate_invalid_amount_type[amount4] PASSED     [ 30%]
+tests/test_app.py::test_validate_invalid_amount_type[amount5] PASSED     [ 33%]
+tests/test_app.py::test_valid_currencies[SGD] PASSED                     [ 35%]
+tests/test_app.py::test_valid_currencies[USD] PASSED                     [ 38%]
+tests/test_app.py::test_valid_currencies[EUR] PASSED                     [ 41%]
+tests/test_app.py::test_invalid_currencies[GBP] PASSED                   [ 43%]
+tests/test_app.py::test_invalid_currencies[sgd] PASSED                   [ 46%]
+tests/test_app.py::test_invalid_currencies[] PASSED                      [ 48%]
+tests/test_app.py::test_invalid_currencies[123] PASSED                   [ 51%]
+tests/test_app.py::test_invalid_currencies[None] PASSED                  [ 53%]
+tests/test_app.py::test_validate_missing_field[transaction_id] PASSED    [ 56%]
+tests/test_app.py::test_validate_missing_field[account_id] PASSED        [ 58%]
+tests/test_app.py::test_validate_missing_field[amount] PASSED            [ 61%]
+tests/test_app.py::test_validate_missing_field[currency] PASSED          [ 64%]
+tests/test_app.py::test_validate_invalid_identifier[-transaction_id] PASSED [ 66%]
+tests/test_app.py::test_validate_invalid_identifier[-account_id] PASSED  [ 69%]
+tests/test_app.py::test_validate_invalid_identifier[   -transaction_id] PASSED [ 71%]
+tests/test_app.py::test_validate_invalid_identifier[   -account_id] PASSED [ 74%]
+tests/test_app.py::test_validate_invalid_identifier[123-transaction_id] PASSED [ 76%]
+tests/test_app.py::test_validate_invalid_identifier[123-account_id] PASSED [ 79%]
+tests/test_app.py::test_validate_invalid_identifier[None-transaction_id] PASSED [ 82%]
+tests/test_app.py::test_validate_invalid_identifier[None-account_id] PASSED [ 84%]
+tests/test_app.py::test_wrong_content_type_request PASSED                [ 87%]
+tests/test_app.py::test_malformed_json_request PASSED                    [ 89%]
+tests/test_app.py::test_valid_json_bad_request[[]] PASSED                [ 92%]
+tests/test_app.py::test_valid_json_bad_request[null] PASSED              [ 94%]
+tests/test_app.py::test_valid_json_bad_request["hello"] PASSED           [ 97%]
+tests/test_app.py::test_valid_json_bad_request[123] PASSED               [100%]
+
+============================== 39 passed in 0.53s ==============================
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (SonarQube Analysis)
+[Pipeline] script
+[Pipeline] {
+[Pipeline] tool
+[Pipeline] withSonarQubeEnv
+Injecting SonarQube environment variables using the configuration: finsecure-sonarqube
+[Pipeline] {
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] withCredentials
+Masking supported pattern matches of $SONAR_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+08:28:46.658 INFO  Scanner configuration file: /home/jenkins/agent/tools/hudson.plugins.sonar.SonarRunnerInstallation/SonarScanner/conf/sonar-scanner.properties
+08:28:46.677 INFO  Project root configuration file: /home/jenkins/agent/workspace/finsecure-pay-pipeline/sonar-project.properties
+08:28:46.761 INFO  SonarScanner CLI 8.3.0.16463
+08:28:46.871 INFO  Linux 6.12.76-linuxkit amd64
+08:28:52.915 INFO  Communicating with SonarQube Community Build 26.10.0.133078
+08:28:52.917 INFO  JRE provisioning: os[linux], arch[x86_64]
+08:28:53.717 INFO  Starting SonarScanner Engine...
+08:28:53.719 INFO  Java 21.0.12.1 Eclipse Adoptium (64-bit)
+08:28:59.668 INFO  Load global settings
+08:28:59.911 INFO  Load global settings (done) | time=237ms
+08:28:59.916 INFO  Server id: 147B411E-AaGSvJtBwv1c_9fUT42i
+08:28:59.937 INFO  Loading required plugins
+08:28:59.938 INFO  Load plugins index
+08:28:59.970 INFO  Load plugins index (done) | time=33ms
+08:28:59.972 INFO  Load/download plugins
+08:28:59.987 INFO  Load/download plugins (done) | time=17ms
+08:29:00.614 INFO  Load project settings for component key: 'finsecure-pay'
+08:29:00.669 INFO  Load project settings for component key: 'finsecure-pay' (done) | time=55ms
+08:29:00.696 INFO  Process project properties
+08:29:00.727 INFO  Process project properties (done) | time=30ms
+08:29:00.749 INFO  Project key: finsecure-pay
+08:29:00.749 INFO  Base dir: /home/jenkins/agent/workspace/finsecure-pay-pipeline
+08:29:00.750 INFO  Working dir: /home/jenkins/agent/workspace/finsecure-pay-pipeline/.scannerwork
+08:29:00.943 INFO  Load quality profiles
+08:29:01.045 INFO  Load quality profiles (done) | time=102ms
+08:29:01.066 INFO  Auto-configuring with CI 'Jenkins'
+08:29:01.128 INFO  Load active rules
+08:29:02.750 INFO  Load active rules (done) | time=1622ms
+08:29:02.777 INFO  Load analysis cache
+08:29:02.893 INFO  Load analysis cache (5.0 kB) | time=120ms
+08:29:03.101 INFO  Preprocessing files...
+08:29:03.283 INFO  1 language detected in 3 preprocessed files (done) | time=177ms
+08:29:03.286 INFO  0 files ignored because of scm ignore settings
+08:29:03.287 INFO  Loading plugins for detected languages
+08:29:03.294 INFO  Load/download plugins
+08:29:03.318 INFO  Load/download plugins (done) | time=32ms
+08:29:03.929 INFO  Load project repositories
+08:29:05.023 INFO  Load project repositories (done) | time=1093ms
+08:29:05.109 INFO  Indexing files...
+08:29:05.110 INFO  Project configuration:
+08:29:05.132 INFO  3 files indexed (done) | time=22ms
+08:29:05.134 INFO  Quality profile for py: Sonar way core
+08:29:05.136 INFO  ------------- Run sensors on module FinSecure Pay
+08:29:05.237 INFO  Load metrics repository
+08:29:05.301 INFO  Load metrics repository (done) | time=65ms
+08:29:06.529 INFO  Sensor IaC YAML File Type Classification Sensor [iac]
+08:29:06.539 INFO  Sensor IaC YAML File Type Classification Sensor [iac] (done) | time=9ms
+08:29:06.540 INFO  Sensor IaC hadolint report Sensor [iac]
+08:29:06.542 INFO  Sensor IaC hadolint report Sensor [iac] (done) | time=1ms
+08:29:06.544 INFO  Sensor Java Config Sensor [iac]
+08:29:06.545 INFO  There are no files to be analyzed for the Java language
+08:29:06.547 INFO  Sensor Java Config Sensor [iac] (done) | time=2ms
+08:29:06.548 INFO  Sensor IaC Docker Sensor [iac]
+08:29:06.551 INFO  There are no files to be analyzed for the Docker language
+08:29:06.552 INFO  Sensor IaC Docker Sensor [iac] (done) | time=7ms
+08:29:06.553 INFO  Sensor Python Sensor [python]
+08:29:07.348 INFO  Starting global symbols computation
+08:29:07.354 INFO  3 source files to be analyzed
+08:29:07.783 INFO  3/3 source files have been analyzed
+08:29:07.786 INFO  Finished step global symbols computation in 434ms
+08:29:07.848 INFO  Starting rules execution
+08:29:07.849 INFO  3 source files to be analyzed
+08:29:09.147 INFO  3/3 source files have been analyzed
+08:29:09.148 INFO  Finished step rules execution in 1299ms
+08:29:09.149 INFO  The Python analyzer was able to leverage cached data from previous analyses for 0 out of 3 files. These files were not parsed.
+08:29:09.154 INFO  Sensor Python Sensor [python] (done) | time=2602ms
+08:29:09.155 INFO  Sensor Cobertura Sensor for Python coverage [python]
+08:29:09.173 INFO  Sensor Cobertura Sensor for Python coverage [python] (done) | time=17ms
+08:29:09.174 INFO  Sensor PythonXUnitSensor [python]
+08:29:09.183 INFO  Sensor PythonXUnitSensor [python] (done) | time=10ms
+08:29:09.183 INFO  Sensor Python Dependency Sensor [python]
+08:29:09.190 INFO  Sensor Python Dependency Sensor [python] (done) | time=6ms
+08:29:09.191 INFO  Sensor TextAndSecretsSensor [text]
+08:29:09.222 INFO  Available processors: 8
+08:29:09.223 INFO  Using 8 threads for analysis.
+08:29:09.893 INFO  Start fetching files for the text and secrets analysis
+08:29:09.913 INFO  Using Git CLI to retrieve dirty files
+08:29:09.927 INFO  Retrieving language associated files and files included via "sonar.text.inclusions" that are tracked by git
+08:29:09.928 INFO  Starting the text and secrets analysis
+08:29:09.931 INFO  3 source files to be analyzed for the text and secrets analysis
+08:29:09.960 INFO  3/3 source files have been analyzed for the text and secrets analysis
+08:29:09.964 INFO  Sensor TextAndSecretsSensor [text] (done) | time=774ms
+08:29:09.971 INFO  ------------- Run sensors on project
+08:29:10.337 INFO  Sensor IaC Project Sensor [iac]
+08:29:10.342 INFO  Sensor IaC Project Sensor [iac] (done) | time=5ms
+08:29:10.343 INFO  Sensor Zero Coverage Sensor
+08:29:10.360 INFO  Sensor Zero Coverage Sensor (done) | time=17ms
+08:29:10.361 INFO  ------------- Gather SCA dependencies on project
+08:29:10.375 INFO  Dependency analysis skipped
+08:29:10.393 INFO  CPD Executor 1 file had no CPD blocks
+08:29:10.394 INFO  CPD Executor Calculating CPD for 1 file
+08:29:10.405 INFO  CPD Executor CPD calculation finished (done) | time=11ms
+08:29:10.425 INFO  SCM revision ID '552483a4dc3d14b6b91f27c2243a28acd57f5fdc'
+08:29:10.617 INFO  Analysis report generated in 176ms, dir size=176.2 kB
+08:29:10.658 INFO  Analysis report compressed in 40ms, zip size=31.7 kB
+08:29:10.743 INFO  Analysis report uploaded in 84ms
+08:29:10.746 INFO  ------------- Check Quality Gate status
+08:29:10.747 INFO  Waiting for the analysis report to be processed (max 300s)
+08:29:20.886 INFO  QUALITY GATE STATUS: PASSED - View details on http://sonarqube:9000/dashboard?id=finsecure-pay
+08:29:20.908 INFO  Analysis total time: 27.078 s
+08:29:20.970 INFO  SonarScanner Engine completed successfully
+08:29:21.003 INFO  EXECUTION SUCCESS
+08:29:21.004 INFO  Total time: 34.496s
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // withSonarQubeEnv
+[Pipeline] }
+[Pipeline] // script
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Snyk Dependency Scan)
+[Pipeline] withCredentials
+Masking supported pattern matches of $SNYK_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+Collecting blinker==1.9.0 (from -r requirements.txt (line 1))
+  Downloading blinker-1.9.0-py3-none-any.whl.metadata (1.6 kB)
+Collecting click==8.5.0 (from -r requirements.txt (line 2))
+  Downloading click-8.5.0-py3-none-any.whl.metadata (2.6 kB)
+Collecting Flask==3.1.3 (from -r requirements.txt (line 3))
+  Downloading flask-3.1.3-py3-none-any.whl.metadata (3.2 kB)
+Collecting gunicorn==26.2.0 (from -r requirements.txt (line 4))
+  Downloading gunicorn-26.2.0-py3-none-any.whl.metadata (5.5 kB)
+Collecting iniconfig==2.3.1 (from -r requirements.txt (line 5))
+  Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+Collecting itsdangerous==2.2.0 (from -r requirements.txt (line 6))
+  Downloading itsdangerous-2.2.0-py3-none-any.whl.metadata (1.9 kB)
+Collecting Jinja2==3.1.6 (from -r requirements.txt (line 7))
+  Downloading jinja2-3.1.6-py3-none-any.whl.metadata (2.9 kB)
+Collecting MarkupSafe==3.0.4 (from -r requirements.txt (line 8))
+  Downloading markupsafe-3.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.7 kB)
+Collecting packaging==26.3 (from -r requirements.txt (line 9))
+  Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+Collecting pluggy==1.7.0 (from -r requirements.txt (line 10))
+  Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+Collecting Pygments==2.21.0 (from -r requirements.txt (line 11))
+  Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting pytest==9.1.1 (from -r requirements.txt (line 12))
+  Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+Collecting Werkzeug==3.1.9 (from -r requirements.txt (line 13))
+  Downloading werkzeug-3.1.9-py3-none-any.whl.metadata (4.1 kB)
+Downloading blinker-1.9.0-py3-none-any.whl (8.5 kB)
+Downloading click-8.5.0-py3-none-any.whl (125 kB)
+Downloading flask-3.1.3-py3-none-any.whl (103 kB)
+Downloading gunicorn-26.2.0-py3-none-any.whl (228 kB)
+Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+Downloading itsdangerous-2.2.0-py3-none-any.whl (16 kB)
+Downloading jinja2-3.1.6-py3-none-any.whl (134 kB)
+Downloading markupsafe-3.0.4-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (23 kB)
+Downloading packaging-26.3-py3-none-any.whl (129 kB)
+Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 16.3 MB/s eta 0:00:00
+Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+Downloading werkzeug-3.1.9-py3-none-any.whl (228 kB)
+Installing collected packages: Pygments, pluggy, packaging, MarkupSafe, itsdangerous, iniconfig, gunicorn, click, blinker, Werkzeug, pytest, Jinja2, Flask
+
+Successfully installed Flask-3.1.3 Jinja2-3.1.6 MarkupSafe-3.0.4 Pygments-2.21.0 Werkzeug-3.1.9 blinker-1.9.0 click-8.5.0 gunicorn-26.2.0 iniconfig-2.3.1 itsdangerous-2.2.0 packaging-26.3 pluggy-1.7.0 pytest-9.1.1
+Testing  (requirements.txt) ...
+
+Tested 13 dependencies for known issues, found 0 issues, 0 vulnerable paths.
+
+Open Security issues: 0
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ Test Summary                                                                 │
+│                                                                              │
+│   Organization:                                                              │
+│   Test type:         Software Composition Analysis                           │
+│   Project name:      finsecure-pay-pipeline                                  │
+│   Project path:      /home/jenkins/agent/workspace/finsecure-pay-pipeline    │
+│   Target file:       requirements.txt                                        │
+│                                                                              │
+│   Total security issues: 0                                                   │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+💡 Tip
+
+   You are currently viewing results with --severity-threshold applied.
+   To view all issues, remove the --severity-threshold flag            
+                                                                       
+
+💡 Tip
+
+   To view ignored issues, use the --include-ignores option.
+                                                            
+
+[Pipeline] }
+[Pipeline] // withCredentials
+Post stage
+[Pipeline] archiveArtifacts
+Archiving artifacts
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Package)
+[Pipeline] sh
++ mkdir -p dist
++ git archive --format=tar.gz --output=dist/finsecure-pay-24.tar.gz HEAD app.py transaction.py requirements.txt Dockerfile k8s README.md
+[Pipeline] archiveArtifacts
+Archiving artifacts
+Recording fingerprints
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Security Checks)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:24 python -m bandit app.py transaction.py
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.12.16
+Run started:2026-11-01 08:29:50.182097+00:00
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 98
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Container Build)
+[Pipeline] sh
++ docker build --platform linux/amd64 -t cmyaa/finsecure-pay:build-24 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 578B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [1/6] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#4 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 98B done
+#5 DONE 0.0s
+
+#6 [4/6] RUN python -m pip install --no-cache-dir -r requirements.txt
+#6 CACHED
+
+#7 [2/6] WORKDIR /app
+#7 CACHED
+
+#8 [3/6] COPY requirements.txt .
+#8 CACHED
+
+#9 [5/6] COPY app.py transaction.py ./
+#9 CACHED
+
+#10 [6/6] RUN groupadd --gid 10001 appuser     && useradd --uid 10001 --gid appuser --no-create-home        --shell /usr/sbin/nologin appuser
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:cf90c23a1e3a1b88cf94e4bec172e6d040d7ced528ac09b2cfbcdbba2079f2ec done
+#11 exporting config sha256:0fe5d553c32664e08e1bb86dbe8ebae2ee27182b5b28343836bdedb86e98ac1a done
+#11 exporting attestation manifest sha256:63aa5af0ba6f6e4292eebb2bfc747cef53ee50206a2ecdbb395a9ef22aac0c00
+#11 exporting attestation manifest sha256:63aa5af0ba6f6e4292eebb2bfc747cef53ee50206a2ecdbb395a9ef22aac0c00 0.0s done
+#11 exporting manifest list sha256:6f0fb8c66fd62a3b28e116719d982ef1db0d68eb753f1a2622171f476b771078 0.0s done
+#11 naming to docker.io/cmyaa/finsecure-pay:build-24 done
+#11 unpacking to docker.io/cmyaa/finsecure-pay:build-24 done
+#11 DONE 0.1s
++ docker image inspect cmyaa/finsecure-pay:build-24 --format {{.Os}}/{{.Architecture}}
+linux/amd64
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Push)
+[Pipeline] withCredentials
+Masking supported pattern matches of $DOCKERHUB_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+
+WARNING! Your credentials are stored unencrypted in '/tmp/tmp.SDnYHXkkkR/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+The push refers to repository [docker.io/cmyaa/finsecure-pay]
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+f5b253875fcb: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Layer already exists
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+ca30a39e3f58: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+ca30a39e3f58: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+ca30a39e3f58: Waiting
+4a111f8fbe23: Waiting
+86586d55cc56: Waiting
+470f427fb7d6: Waiting
+f2be67225471: Layer already exists
+44136fa355b3: Already exists
+ca30a39e3f58: Waiting
+4a111f8fbe23: Waiting
+86586d55cc56: Waiting
+470f427fb7d6: Waiting
+ca30a39e3f58: Waiting
+86586d55cc56: Waiting
+470f427fb7d6: Waiting
+d90c93ffb859: Waiting
+64eee87ab3d1: Waiting
+ca30a39e3f58: Layer already exists
+4a111f8fbe23: Waiting
+d90c93ffb859: Waiting
+64eee87ab3d1: Waiting
+08c2f4626c42: Waiting
+4a111f8fbe23: Layer already exists
+a38baa9c9197: Waiting
+86586d55cc56: Layer already exists
+d90c93ffb859: Waiting
+64eee87ab3d1: Waiting
+08c2f4626c42: Waiting
+a38baa9c9197: Waiting
+d90c93ffb859: Layer already exists
+64eee87ab3d1: Layer already exists
+08c2f4626c42: Layer already exists
+a38baa9c9197: Layer already exists
+470f427fb7d6: Pushed
+build-24: digest: sha256:6f0fb8c66fd62a3b28e116719d982ef1db0d68eb753f1a2622171f476b771078 size: 856
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Deploy)
+[Pipeline] withCredentials
+Masking supported pattern matches of $KUBECONFIG
+[Pipeline] {
+[Pipeline] sh
++ set -eu
++ kubectl --namespace default apply -f k8s/configmap.yaml -f k8s/service.yaml
+configmap/finsecure-pay-config unchanged
+service/finsecure-pay-service unchanged
++ mktemp
++ DEPLOY_MANIFEST=/tmp/tmp.K2N1e1dMLx
++ trap rm -f "$DEPLOY_MANIFEST" EXIT
++ kubectl set image --local -f k8s/deployment.yaml finsecure-pay=cmyaa/finsecure-pay:build-24 -o yaml
++ kubectl --namespace default apply -f /tmp/tmp.K2N1e1dMLx
+deployment.apps/finsecure-pay configured
++ kubectl --namespace default rollout status deployment/finsecure-pay --timeout=180s
+Waiting for deployment "finsecure-pay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "finsecure-pay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "finsecure-pay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "finsecure-pay" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "finsecure-pay" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "finsecure-pay" rollout to finish: 1 old replicas are pending termination...
+deployment "finsecure-pay" successfully rolled out
++ kubectl --namespace default get deployment finsecure-pay -o wide
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS      IMAGES                         SELECTOR
+finsecure-pay   2/2     2            2           2d15h   finsecure-pay   cmyaa/finsecure-pay:build-24   app=finsecure-pay
++ kubectl --namespace default get pods -l app=finsecure-pay -o wide
+NAME                             READY   STATUS      RESTARTS        AGE   IP             NODE                                 NOMINATED NODE   READINESS GATES
+finsecure-pay-659cd759d7-fz7x9   0/1     Completed   140 (17m ago)   15h   10.244.0.51    aks-systempool-29975460-vmss000001   <none>           <none>
+finsecure-pay-7c4dbcb485-4k4hw   1/1     Running     0               7s    10.244.0.170   aks-systempool-29975460-vmss000001   <none>           <none>
+finsecure-pay-7c4dbcb485-fnqgk   1/1     Running     0               16s   10.244.0.217   aks-systempool-29975460-vmss000001   <none>           <none>
++ rm -f /tmp/tmp.K2N1e1dMLx
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+Finished: SUCCESS

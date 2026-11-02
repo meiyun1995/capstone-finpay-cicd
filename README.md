@@ -11,6 +11,32 @@ Azure Kubernetes Service deployment and a Jenkins pipeline that tests, scans,
 packages, publishes, and deploys versioned application images. Prometheus and
 Grafana provide live operational metrics and Discord alert notifications.
 
+## Final submission and task history
+
+Use [`main`](https://github.com/meiyun1995/capstone-finpay-cicd/tree/main) for the
+complete final implementation. It contains Tasks 1–6, the Task 7 design document,
+the final presentation, and the supporting evidence. The feature branches remain
+available as development history. Each later task branch includes the earlier
+tasks, so the complete implementation can be merged through the latest task branch.
+
+Submission resources:
+
+- [PowerPoint presentation](presentation/finsecure-pay-capstone.pptx)
+- [Presentation PDF](presentation/finsecure-pay-capstone.pdf)
+- [Evidence checklist and slide mapping](presentation/evidence-checklist.md)
+- [Task 7 design document PDF](docs/task7-design-document.pdf)
+- [Docker Hub image tags](https://hub.docker.com/r/cmyaa/finsecure-pay/tags)
+
+| Task | Development branch | Relevant files on `main` | Evidence |
+| --- | --- | --- | --- |
+| 1: Application and tests | [feature/transaction-validation](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/transaction-validation) | [app.py](app.py), [Transaction](transaction.py), [tests](tests/test_app.py) | [Recorded build and 39 passing tests](<screenshots/task 5/trivy_success_console_output.txt>) |
+| 2: Containerisation | [feature/containerisation](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/containerisation) | [Dockerfile](Dockerfile), [.dockerignore](.dockerignore) | [Container and registry captures](<screenshots/task 2/>) |
+| 3: Kubernetes and cloud | [feature/kubernetes-deployment](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/kubernetes-deployment) | [Deployment](k8s/deployment.yaml), [Service](k8s/service.yaml), [ConfigMap](k8s/configmap.yaml) | [AKS access and recovery captures](<screenshots/task 3/>) |
+| 4: Jenkins CI/CD | [feature/jenkins-pipeline](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/jenkins-pipeline) | [Jenkinsfile](Jenkinsfile), [agent and test setup](jenkins/) | [Pipeline, rollout, and rollback evidence](<screenshots/task 4/>) |
+| 5: DevSecOps | [feature/devsecops](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/devsecops) | [Security stages](Jenkinsfile), [SonarQube configuration](sonar-project.properties) | [Reports, blocked release, remediation, and credentials](<screenshots/task 5/>) |
+| 6: Monitoring and alerting | [feature/monitoring-alerting](https://github.com/meiyun1995/capstone-finpay-cicd/tree/feature/monitoring-alerting) | [Helm values](monitoring/values.yaml), [dashboard](monitoring/finsecure-pay-dashboard.json), [alert export](monitoring/finsecure-monitoring.yaml) | [Dashboard, Discord alerts, and logs](<screenshots/task 6/>) |
+| 7: Design and AI proposal | Final submission on `main` | [Design document](docs/task7-design-document.md), [editable architecture](docs/assets/finsecure-architecture.drawio) | [Five-page report](docs/task7-design-document.pdf) and presentation slides 9–10 |
+
 ## Prerequisites and setup
 
 Developed using **Python 3.12.13**. Install Python 3.12 and Git before starting.
@@ -1079,12 +1105,13 @@ dedicated screenshot was captured.
 
 ## Development workflow
 
-Work on a feature branch, run the tests, and review changes before committing.
-Push the feature branch and open a pull request into `main`. The configured
-Jenkins job currently polls `feature/devsecops`; pushes to that branch,
-including documentation changes, trigger the full pipeline and deployment.
-Update the job's branch configuration deliberately when changing the release
-workflow. Task 6 configuration is developed on `feature/monitoring-alerting`
-and installed separately with Helm; Jenkins remains pointed at
-`feature/devsecops`. Keep credentials outside Git and retain the evidence from each
-assignment demonstration.
+`main` is the complete submission branch. For future work, create a feature branch
+from `main`, run the tests, and review changes before opening a pull request back
+into `main`. Retain the task branches as the record of the assignment development.
+
+The demonstrated Jenkins job is still configured to poll `feature/devsecops`.
+Merging into `main` does not change that external Jenkins job configuration or
+trigger a deployment from `main`. For future releases from `main`, change the
+job's SCM branch specifier to `*/main` and retain the existing polling trigger.
+Monitoring is installed separately with Helm. Keep credentials outside Git and
+retain evidence from each assignment demonstration.

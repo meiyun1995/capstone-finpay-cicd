@@ -1,0 +1,31 @@
+{
+  "dependencyCount": 13,
+  "displayTargetFile": "requirements.txt",
+  "filesystemPolicy": false,
+  "filtered": {
+    "ignore": [],
+    "patch": []
+  },
+  "hasUnknownVersions": false,
+  "ignoreSettings": {
+    "adminOnly": false,
+    "autoApproveIgnores": false,
+    "disregardFilesystemIgnores": false,
+    "reasonRequired": false
+  },
+  "isPrivate": true,
+  "licensesPolicy": {
+    "orgLicenseRules": null,
+    "severities": null
+  },
+  "ok": true,
+  "org": "65491223-8565-4e08-b216-c5ddec0637ad",
+  "packageManager": "pip",
+  "path": "/home/jenkins/agent/workspace/finsecure-pay-pipeline",
+  "policy": "",
+  "projectName": "finsecure-pay-pipeline",
+  "summary": "No known vulnerabilities",
+  "targetFile": "",
+  "uniqueCount": 0,
+  "vulnerabilities": []
+}

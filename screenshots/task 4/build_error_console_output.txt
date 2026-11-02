@@ -1,0 +1,186 @@
+Started by an SCM change
+Obtained Jenkinsfile from git https://github.com/meiyun1995/capstone-finpay-cicd.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on finsecure-agent in /home/jenkins/agent/workspace/finsecure-pay-pipeline
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+No credentials specified
+Fetching changes from the remote Git repository
+ > git rev-parse --resolve-git-dir /home/jenkins/agent/workspace/finsecure-pay-pipeline/.git # timeout=10
+ > git config remote.origin.url https://github.com/meiyun1995/capstone-finpay-cicd.git # timeout=10
+Fetching upstream changes from https://github.com/meiyun1995/capstone-finpay-cicd.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/meiyun1995/capstone-finpay-cicd.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+Checking out Revision 0ea6bffa1e59fd5823778ce9337e4eea28cb3e4f (refs/remotes/origin/feature/jenkins-pipeline)
+Commit message: "Demonstrate failing test blocks deployment"
+ > git rev-parse refs/remotes/origin/feature/jenkins-pipeline^{commit} # timeout=10
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 0ea6bffa1e59fd5823778ce9337e4eea28cb3e4f # timeout=10
+ > git rev-list --no-walk 4a9605097e5dcb5e530647025a646dbefdad1bef # timeout=10
+[Pipeline] sh
++ git log -1 --oneline
+0ea6bff Demonstrate failing test blocks deployment
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] sh
++ docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:16 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.test
+#1 transferring dockerfile: 382B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 1.8s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 6.62kB done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#5 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#5 DONE 0.0s
+
+#6 [3/7] COPY requirements.txt .
+#6 CACHED
+
+#7 [2/7] WORKDIR /app
+#7 CACHED
+
+#8 [4/7] RUN python -m pip install --no-cache-dir -r requirements.txt
+#8 CACHED
+
+#9 [5/7] RUN python -m pip install --no-cache-dir bandit==1.9.4
+#9 CACHED
+
+#10 [6/7] COPY app.py transaction.py ./
+#10 CACHED
+
+#11 [7/7] COPY tests/ ./tests/
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:7b24748ec820854f94bf9484c889ec0ef567250a45d4771da3fc8d42a23940f2 done
+#12 exporting config sha256:0fb7a6fa2b8db79b2e76304bf13aa6e38befcb2640754ccb1a912e9776a49ee4 done
+#12 exporting attestation manifest sha256:73891501182da433ab6d8b7e163e60bb2660955457c0b829b0fd95d0a4af518f
+#12 exporting attestation manifest sha256:73891501182da433ab6d8b7e163e60bb2660955457c0b829b0fd95d0a4af518f 0.0s done
+#12 exporting manifest list sha256:434b490da2970a7f9f8f41ad786fc56ba6a95cb62bed51b0f85fb2994769c478 0.0s done
+#12 naming to docker.io/library/finsecure-pay-test:16 done
+#12 unpacking to docker.io/library/finsecure-pay-test:16 done
+#12 DONE 0.1s
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Test)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:16
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.1.1, pluggy-1.7.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+collecting ... collected 40 items
+
+tests/test_app.py::test_health PASSED                                    [  2%]
+tests/test_app.py::test_validate_valid_transaction[0.01] PASSED          [  5%]
+tests/test_app.py::test_validate_valid_transaction[150.5] PASSED         [  7%]
+tests/test_app.py::test_validate_valid_transaction[10000] PASSED         [ 10%]
+tests/test_app.py::test_validate_out_of_range_amount[0] PASSED           [ 12%]
+tests/test_app.py::test_validate_out_of_range_amount[-10] PASSED         [ 15%]
+tests/test_app.py::test_validate_out_of_range_amount[10000.01] PASSED    [ 17%]
+tests/test_app.py::test_validate_invalid_amount_type[150] PASSED         [ 20%]
+tests/test_app.py::test_validate_invalid_amount_type[True] PASSED        [ 22%]
+tests/test_app.py::test_validate_invalid_amount_type[False] PASSED       [ 25%]
+tests/test_app.py::test_validate_invalid_amount_type[None] PASSED        [ 27%]
+tests/test_app.py::test_validate_invalid_amount_type[amount4] PASSED     [ 30%]
+tests/test_app.py::test_validate_invalid_amount_type[amount5] PASSED     [ 32%]
+tests/test_app.py::test_valid_currencies[SGD] PASSED                     [ 35%]
+tests/test_app.py::test_valid_currencies[USD] PASSED                     [ 37%]
+tests/test_app.py::test_valid_currencies[EUR] PASSED                     [ 40%]
+tests/test_app.py::test_invalid_currencies[GBP] PASSED                   [ 42%]
+tests/test_app.py::test_invalid_currencies[sgd] PASSED                   [ 45%]
+tests/test_app.py::test_invalid_currencies[] PASSED                      [ 47%]
+tests/test_app.py::test_invalid_currencies[123] PASSED                   [ 50%]
+tests/test_app.py::test_invalid_currencies[None] PASSED                  [ 52%]
+tests/test_app.py::test_validate_missing_field[transaction_id] PASSED    [ 55%]
+tests/test_app.py::test_validate_missing_field[account_id] PASSED        [ 57%]
+tests/test_app.py::test_validate_missing_field[amount] PASSED            [ 60%]
+tests/test_app.py::test_validate_missing_field[currency] PASSED          [ 62%]
+tests/test_app.py::test_validate_invalid_identifier[-transaction_id] PASSED [ 65%]
+tests/test_app.py::test_validate_invalid_identifier[-account_id] PASSED  [ 67%]
+tests/test_app.py::test_validate_invalid_identifier[   -transaction_id] PASSED [ 70%]
+tests/test_app.py::test_validate_invalid_identifier[   -account_id] PASSED [ 72%]
+tests/test_app.py::test_validate_invalid_identifier[123-transaction_id] PASSED [ 75%]
+tests/test_app.py::test_validate_invalid_identifier[123-account_id] PASSED [ 77%]
+tests/test_app.py::test_validate_invalid_identifier[None-transaction_id] PASSED [ 80%]
+tests/test_app.py::test_validate_invalid_identifier[None-account_id] PASSED [ 82%]
+tests/test_app.py::test_wrong_content_type_request PASSED                [ 85%]
+tests/test_app.py::test_malformed_json_request PASSED                    [ 87%]
+tests/test_app.py::test_valid_json_bad_request[[]] PASSED                [ 90%]
+tests/test_app.py::test_valid_json_bad_request[null] PASSED              [ 92%]
+tests/test_app.py::test_valid_json_bad_request["hello"] PASSED           [ 95%]
+tests/test_app.py::test_valid_json_bad_request[123] PASSED               [ 97%]
+tests/test_pipeline_gate.py::test_pipeline_blocks_failed_tests FAILED    [100%]
+
+=================================== FAILURES ===================================
+______________________ test_pipeline_blocks_failed_tests _______________________
+
+    def test_pipeline_blocks_failed_tests():
+        """Deliberately fail to demonstrate the CI deployment gate."""
+>       assert False, "Intentional failure for the Task 4 demonstration"
+E       AssertionError: Intentional failure for the Task 4 demonstration
+E       assert False
+
+tests/test_pipeline_gate.py:3: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_pipeline_gate.py::test_pipeline_blocks_failed_tests - Asser...
+========================= 1 failed, 39 passed in 0.53s =========================
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Package)
+Stage "Package" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Security Checks)
+Stage "Security Checks" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Container Build)
+Stage "Container Build" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Push)
+Stage "Push" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Deploy)
+Stage "Deploy" skipped due to earlier failure(s)
+[Pipeline] getContext
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+ERROR: script returned exit code 1
+Finished: FAILURE

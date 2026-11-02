@@ -1,0 +1,377 @@
+Started by an SCM change
+Obtained Jenkinsfile from git https://github.com/meiyun1995/capstone-finpay-cicd.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on finsecure-agent in /home/jenkins/agent/workspace/finsecure-pay-pipeline
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Checkout)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+No credentials specified
+Fetching changes from the remote Git repository
+ > git rev-parse --resolve-git-dir /home/jenkins/agent/workspace/finsecure-pay-pipeline/.git # timeout=10
+ > git config remote.origin.url https://github.com/meiyun1995/capstone-finpay-cicd.git # timeout=10
+Fetching upstream changes from https://github.com/meiyun1995/capstone-finpay-cicd.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/meiyun1995/capstone-finpay-cicd.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+Checking out Revision 5dbd62f6d6589c17fd3022dadedcb6030606bc8e (refs/remotes/origin/feature/jenkins-pipeline)
+Commit message: "Push versioned images using Jenkins Docker Hub credentials"
+ > git rev-parse refs/remotes/origin/feature/jenkins-pipeline^{commit} # timeout=10
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 5dbd62f6d6589c17fd3022dadedcb6030606bc8e # timeout=10
+ > git rev-list --no-walk de4f693d6ab4de7a0930c533aa64554f3d1436ff # timeout=10
+[Pipeline] sh
++ git log -1 --oneline
+5dbd62f Push versioned images using Jenkins Docker Hub credentials
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] sh
++ docker build -f jenkins/Dockerfile.test -t finsecure-pay-test:10 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.test
+#1 transferring dockerfile: 382B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 1.7s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 6.39kB done
+#4 DONE 0.0s
+
+#5 [1/7] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#5 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#5 DONE 0.0s
+
+#6 [3/7] COPY requirements.txt .
+#6 CACHED
+
+#7 [6/7] COPY app.py transaction.py ./
+#7 CACHED
+
+#8 [2/7] WORKDIR /app
+#8 CACHED
+
+#9 [5/7] RUN python -m pip install --no-cache-dir bandit==1.9.4
+#9 CACHED
+
+#10 [4/7] RUN python -m pip install --no-cache-dir -r requirements.txt
+#10 CACHED
+
+#11 [7/7] COPY tests/ ./tests/
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:5dc5993c0806d936ef95e3d2ef2abb4ef851a07ecf24333a27c31b51010d9fb2 done
+#12 exporting config sha256:5aefb2bdb79bf86d25c7ea8ed4eb4dffc868a0b8bf1d74778b9cc7d5a023f75e done
+#12 exporting attestation manifest sha256:210d231eebcf9f4c8a62d0fb12ac1a44e58c624684e2cd78e2652e92f89c1304 0.0s done
+#12 exporting manifest list sha256:c7313c9f01211a6b3776777a7d7cb7a1e9e2fdb44488820e263241860081068c 0.0s done
+#12 naming to docker.io/library/finsecure-pay-test:10
+#12 naming to docker.io/library/finsecure-pay-test:10 done
+#12 unpacking to docker.io/library/finsecure-pay-test:10 done
+#12 DONE 0.1s
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Test)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:10
+============================= test session starts ==============================
+platform linux -- Python 3.12.16, pytest-9.1.1, pluggy-1.7.0 -- /usr/local/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+collecting ... collected 39 items
+
+tests/test_app.py::test_health PASSED                                    [  2%]
+tests/test_app.py::test_validate_valid_transaction[0.01] PASSED          [  5%]
+tests/test_app.py::test_validate_valid_transaction[150.5] PASSED         [  7%]
+tests/test_app.py::test_validate_valid_transaction[10000] PASSED         [ 10%]
+tests/test_app.py::test_validate_out_of_range_amount[0] PASSED           [ 12%]
+tests/test_app.py::test_validate_out_of_range_amount[-10] PASSED         [ 15%]
+tests/test_app.py::test_validate_out_of_range_amount[10000.01] PASSED    [ 17%]
+tests/test_app.py::test_validate_invalid_amount_type[150] PASSED         [ 20%]
+tests/test_app.py::test_validate_invalid_amount_type[True] PASSED        [ 23%]
+tests/test_app.py::test_validate_invalid_amount_type[False] PASSED       [ 25%]
+tests/test_app.py::test_validate_invalid_amount_type[None] PASSED        [ 28%]
+tests/test_app.py::test_validate_invalid_amount_type[amount4] PASSED     [ 30%]
+tests/test_app.py::test_validate_invalid_amount_type[amount5] PASSED     [ 33%]
+tests/test_app.py::test_valid_currencies[SGD] PASSED                     [ 35%]
+tests/test_app.py::test_valid_currencies[USD] PASSED                     [ 38%]
+tests/test_app.py::test_valid_currencies[EUR] PASSED                     [ 41%]
+tests/test_app.py::test_invalid_currencies[GBP] PASSED                   [ 43%]
+tests/test_app.py::test_invalid_currencies[sgd] PASSED                   [ 46%]
+tests/test_app.py::test_invalid_currencies[] PASSED                      [ 48%]
+tests/test_app.py::test_invalid_currencies[123] PASSED                   [ 51%]
+tests/test_app.py::test_invalid_currencies[None] PASSED                  [ 53%]
+tests/test_app.py::test_validate_missing_field[transaction_id] PASSED    [ 56%]
+tests/test_app.py::test_validate_missing_field[account_id] PASSED        [ 58%]
+tests/test_app.py::test_validate_missing_field[amount] PASSED            [ 61%]
+tests/test_app.py::test_validate_missing_field[currency] PASSED          [ 64%]
+tests/test_app.py::test_validate_invalid_identifier[-transaction_id] PASSED [ 66%]
+tests/test_app.py::test_validate_invalid_identifier[-account_id] PASSED  [ 69%]
+tests/test_app.py::test_validate_invalid_identifier[   -transaction_id] PASSED [ 71%]
+tests/test_app.py::test_validate_invalid_identifier[   -account_id] PASSED [ 74%]
+tests/test_app.py::test_validate_invalid_identifier[123-transaction_id] PASSED [ 76%]
+tests/test_app.py::test_validate_invalid_identifier[123-account_id] PASSED [ 79%]
+tests/test_app.py::test_validate_invalid_identifier[None-transaction_id] PASSED [ 82%]
+tests/test_app.py::test_validate_invalid_identifier[None-account_id] PASSED [ 84%]
+tests/test_app.py::test_wrong_content_type_request PASSED                [ 87%]
+tests/test_app.py::test_malformed_json_request PASSED                    [ 89%]
+tests/test_app.py::test_valid_json_bad_request[[]] PASSED                [ 92%]
+tests/test_app.py::test_valid_json_bad_request[null] PASSED              [ 94%]
+tests/test_app.py::test_valid_json_bad_request["hello"] PASSED           [ 97%]
+tests/test_app.py::test_valid_json_bad_request[123] PASSED               [100%]
+
+============================== 39 passed in 0.36s ==============================
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Package)
+[Pipeline] sh
++ mkdir -p dist
++ git archive --format=tar.gz --output=dist/finsecure-pay-10.tar.gz HEAD app.py transaction.py requirements.txt Dockerfile k8s README.md
+[Pipeline] archiveArtifacts
+Archiving artifacts
+Recording fingerprints
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Security Checks)
+[Pipeline] sh
++ docker run --rm finsecure-pay-test:10 python -m bandit app.py transaction.py
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.12.16
+Run started:2026-10-30 17:30:17.773088+00:00
+
+Test results:
+	No issues identified.
+
+Code scanned:
+	Total lines of code: 98
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 0
+Files skipped (0):
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Container Build)
+[Pipeline] sh
++ docker build --platform linux/amd64 -t cmyaa/finsecure-pay:build-10 .
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 578B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 162B done
+#3 DONE 0.0s
+
+#4 [1/6] FROM docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f
+#4 resolve docker.io/library/python:3.12-slim@sha256:12316debbfb86890f6b2d825820612741ba527ad5a44e3902759141d572bfe8f 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 98B done
+#5 DONE 0.0s
+
+#6 [4/6] RUN python -m pip install --no-cache-dir -r requirements.txt
+#6 CACHED
+
+#7 [5/6] COPY app.py transaction.py ./
+#7 CACHED
+
+#8 [2/6] WORKDIR /app
+#8 CACHED
+
+#9 [3/6] COPY requirements.txt .
+#9 CACHED
+
+#10 [6/6] RUN groupadd --gid 10001 appuser     && useradd --uid 10001 --gid appuser --no-create-home        --shell /usr/sbin/nologin appuser
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:cf90c23a1e3a1b88cf94e4bec172e6d040d7ced528ac09b2cfbcdbba2079f2ec done
+#11 exporting config sha256:0fe5d553c32664e08e1bb86dbe8ebae2ee27182b5b28343836bdedb86e98ac1a done
+#11 exporting attestation manifest sha256:27717443aeebcb1e190b5b3b6b0a2ee4a8a2f4dbd9f1ecbac32bef24dfb8fa55 0.0s done
+#11 exporting manifest list sha256:553ab2188de502b1aff76d9090264d1be8d283b043c1d18019f88aadbf5c09d8 0.0s done
+#11 naming to docker.io/cmyaa/finsecure-pay:build-10 done
+#11 unpacking to docker.io/cmyaa/finsecure-pay:build-10 done
+#11 DONE 0.1s
++ docker image inspect cmyaa/finsecure-pay:build-10 --format {{.Os}}/{{.Architecture}}
+linux/amd64
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Push)
+[Pipeline] withCredentials
+Masking supported pattern matches of $DOCKERHUB_TOKEN
+[Pipeline] {
+[Pipeline] sh
++ set +x
+
+WARNING! Your credentials are stored unencrypted in '/tmp/tmp.oGKoW8jyYw/config.json'.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/go/credential-store/
+
+Login Succeeded
+The push refers to repository [docker.io/cmyaa/finsecure-pay]
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Waiting
+ce9760ce9ffb: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+f2be67225471: Layer already exists
+44136fa355b3: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Waiting
+44136fa355b3: Waiting
+ce9760ce9ffb: Waiting
+ca30a39e3f58: Waiting
+f5b253875fcb: Layer already exists
+86586d55cc56: Waiting
+ca30a39e3f58: Layer already exists
+4a111f8fbe23: Waiting
+86586d55cc56: Waiting
+4a111f8fbe23: Waiting
+4a111f8fbe23: Waiting
+86586d55cc56: Waiting
+86586d55cc56: Layer already exists
+4a111f8fbe23: Waiting
+d90c93ffb859: Waiting
+d90c93ffb859: Waiting
+4a111f8fbe23: Waiting
+4a111f8fbe23: Waiting
+d90c93ffb859: Waiting
+d90c93ffb859: Waiting
+d90c93ffb859: Waiting
+44136fa355b3: Pushed
+64eee87ab3d1: Waiting
+d90c93ffb859: Waiting
+08c2f4626c42: Waiting
+64eee87ab3d1: Waiting
+08c2f4626c42: Waiting
+64eee87ab3d1: Waiting
+ce9760ce9ffb: Pushed
+a38baa9c9197: Waiting
+08c2f4626c42: Waiting
+64eee87ab3d1: Waiting
+a38baa9c9197: Waiting
+64eee87ab3d1: Waiting
+a38baa9c9197: Waiting
+08c2f4626c42: Waiting
+08c2f4626c42: Waiting
+64eee87ab3d1: Waiting
+a38baa9c9197: Waiting
+a38baa9c9197: Waiting
+4a111f8fbe23: Pushed
+08c2f4626c42: Waiting
+a38baa9c9197: Waiting
+d90c93ffb859: Pushed
+08c2f4626c42: Pushed
+a38baa9c9197: Pushed
+64eee87ab3d1: Pushed
+build-10: digest: sha256:553ab2188de502b1aff76d9090264d1be8d283b043c1d18019f88aadbf5c09d8 size: 856
+[Pipeline] }
+[Pipeline] // withCredentials
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+Finished: SUCCESS
